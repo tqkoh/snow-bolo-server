@@ -9,13 +9,11 @@ import (
 
 type receiveData struct {
 	id      uuid.UUID
-	roomID  string
 	payload []byte
 }
 
 type client struct {
 	id       uuid.UUID
-	roomId   string
 	conn     *websocket.Conn
 	receiver chan receiveData
 	sender   chan string
@@ -25,7 +23,6 @@ type client struct {
 func newClient(roomID string, conn *websocket.Conn, receiver chan receiveData) *client {
 	return &client{
 		id:       uuid.Must(uuid.NewV4()),
-		roomId:   roomID,
 		conn:     conn,
 		receiver: receiver,
 		sender:   make(chan string),
@@ -42,11 +39,10 @@ func (c *client) listen() {
 		if messageType != websocket.TextMessage {
 			continue
 		}
-		fmt.Printf("message: %s, roomID: %s\n", message, c.roomId)
+		fmt.Printf("message: %s\n", message)
 
 		c.receiver <- receiveData{
 			id:      c.id,
-			roomID:  c.roomId,
 			payload: message,
 		}
 	}

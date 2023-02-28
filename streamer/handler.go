@@ -23,7 +23,7 @@ func (s *streamer) handlerWebSocket(data receiveData) error {
 		if !ok {
 			return fmt.Errorf("invalid type for message")
 		}
-		s.sendToAll(sendMessage)
+		s.send(sendMessage, func(_ *client) bool { return true })
 	default:
 		fmt.Printf("invalid method")
 	}

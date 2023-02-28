@@ -36,9 +36,11 @@ func (s *streamer) Listen() {
 	}
 }
 
-func (s *streamer) sendToAll(message string) error {
+func (s *streamer) send(message string, cond func(c *client) bool) error {
 	for _, c := range s.clients {
-		c.sender <- message
+		if cond(c) {
+			c.sender <- message
+		}
 	}
 	return nil
 }
