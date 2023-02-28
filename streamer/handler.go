@@ -26,10 +26,10 @@ func (s *streamer) handlerWebSocket(data receiveData) error {
 		s.send([]byte(sendMessage), func(_ *client) bool { return true })
 	case "join":
 		fmt.Printf("join received\n")
-		processJoin(s, req.Args)
+		processJoin(s, data.id, req.Args)
 	case "input":
 		fmt.Printf("input received\n")
-		processInput(s, req.Args)
+		processInput(s, data.id, req.Args)
 	default:
 		fmt.Printf("invalid method")
 	}

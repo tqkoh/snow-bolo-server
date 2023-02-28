@@ -1,6 +1,9 @@
 package streamer
 
-import "github.com/mitchellh/mapstructure"
+import (
+	"github.com/gofrs/uuid"
+	"github.com/mitchellh/mapstructure"
+)
 
 type Input struct {
 	W     bool `json:"w"`
@@ -13,7 +16,7 @@ type Input struct {
 	Dy    int  `json:"dy"`
 }
 
-func processInput(s *streamer, args map[string]interface{}) error {
+func processInput(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	var input Input
 	err := mapstructure.Decode(args, &input)
 	if err != nil {
@@ -21,6 +24,6 @@ func processInput(s *streamer, args map[string]interface{}) error {
 	}
 
 	// TODO: push input and later process it in the game loop every frame
-
+	users[clientId].input <- input
 	return nil
 }

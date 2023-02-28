@@ -12,11 +12,9 @@ type Join struct {
 	Name string `json:"name"`
 }
 
-type AcceptJoin struct {
-	Id uuid.UUID `json:"id"`
-}
+type AcceptJoin struct{}
 
-func processJoin(s *streamer, args map[string]interface{}) error {
+func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	if _, ok := args["name"]; !ok {
 		return fmt.Errorf("name is required\n")
 	}
@@ -24,27 +22,35 @@ func processJoin(s *streamer, args map[string]interface{}) error {
 	if !ok {
 		return fmt.Errorf("invalid type for name\n")
 	}
-	id := uuid.Must(uuid.NewV4())
 
-	users[id] = &user{
-		id:               id,
+	users[clientId] = &user{
+		id:               clientId,
 		name:             name,
-		y:                rand.Intn(MAP_HEIGHT),
-		x:                rand.Intn(MAP_WIDTH),
+		y:                float32(rand.Intn(MAP_HEIGHT)),
+		x:                float32(rand.Intn(MAP_WIDTH)),
 		vy:               0,
 		vx:               0,
 		leftClickLength:  0,
 		rightClickLength: 0,
+		input:            make(chan Input, 10),
+		previnput: Input{
+			W:     false,
+			A:     false,
+			S:     false,
+			D:     false,
+			Left:  false,
+			Right: false,
+			Dx:    0,
+			Dy:    0,
+		},
 	}
 
-	var res AcceptJoin = AcceptJoin{
-		Id: id,
-	}
+	var res AcceptJoin = AcceptJoin{}
 	resJSON, err := json.Marshal(res)
 	if err != nil {
 		return err
 	}
-	s.sendTo(id, resJSON)
+	s.sendTo(clientId, resJSON)
 
 	return nil
 }
