@@ -16,7 +16,7 @@ type client struct {
 	id       uuid.UUID
 	conn     *websocket.Conn
 	receiver chan receiveData
-	sender   chan string
+	sender   chan []byte
 	closer   chan bool
 }
 
@@ -25,7 +25,7 @@ func newClient(roomID string, conn *websocket.Conn, receiver chan receiveData) *
 		id:       uuid.Must(uuid.NewV4()),
 		conn:     conn,
 		receiver: receiver,
-		sender:   make(chan string),
+		sender:   make(chan []byte),
 		closer:   make(chan bool),
 	}
 }
@@ -52,7 +52,7 @@ func (c *client) send() {
 	for {
 		message := <-c.sender
 
-		err := c.conn.WriteMessage(websocket.TextMessage, []byte(message))
+		err := c.conn.WriteMessage(websocket.TextMessage, message)
 
 		if err != nil {
 			c.closer <- true
