@@ -37,7 +37,7 @@ cname: []
 internal: "off"
 
 # use secure access <"off", "on"> (default: "off")
-https: "on"
+https: "off"
 
 # <<< branch deploy setting >>>
 
