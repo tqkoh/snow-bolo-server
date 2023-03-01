@@ -25,7 +25,7 @@ type payload struct {
 }
 
 func (s *streamer) Listen() {
-	go gameLoop()
+	go gameLoop(s)
 
 	for {
 		data := <-s.receiver

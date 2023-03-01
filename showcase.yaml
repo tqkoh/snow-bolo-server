@@ -37,11 +37,14 @@ cname: []
 internal: "off"
 
 # use secure access <"off", "on"> (default: "off")
-https: "off"
+# https: "off"
 
 # <<< branch deploy setting >>>
 
 # custom deploy setting <see document!> (default: {master: null})
 branch:
-  master: null
+  master:
+    https: "on"
+  dev:
+    https: "off"
   #

@@ -5,10 +5,10 @@ import "time"
 const V_MAX = 2
 const V_K = 0.5
 
-func gameLoop() {
+func gameLoop(s *streamer) {
 	var prev = time.Now()
 	for {
-		// user
+		// process users' input and update state
 		for _, u := range users {
 			// process input
 			var input Input
@@ -56,6 +56,8 @@ func gameLoop() {
 				u.rightClickLength = 0
 			}
 		}
+		// send state to all clients
+
 		// wait for next frame
 		var now = time.Now()
 		var next = prev.Add(time.Second / 60)
