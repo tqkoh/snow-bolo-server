@@ -15,4 +15,4 @@ type user struct {
 	previnput        Input
 }
 
-var users map[uuid.UUID]*user
+var users map[uuid.UUID]*user = make(map[uuid.UUID]*user)

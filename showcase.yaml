@@ -20,7 +20,7 @@ work_dir: "."
 # entrypoint: "cat"
 
 # which port to proxy via http(80) (default: null)
-http_proxy: 8080
+http_proxy: 3939
 
 # which port to expose <array or int> (default: [])
 expose: []
@@ -45,6 +45,5 @@ internal: "off"
 branch:
   master:
     https: "on"
-  dev:
-    https: "off"
-  #
+  # dev:
+  #   https: "off"
