@@ -13,11 +13,10 @@ type Join struct {
 }
 
 type JoinArgs struct {
-	Y float32 `json:"y"`
-	X float32 `json:"x"`
+	Id uuid.UUID `json:"id"`
 }
 
-type JoinResponse struct {
+type JoinAccepted struct {
 	Method string   `json:"method"`
 	Args   JoinArgs `json:"args"`
 }
@@ -58,11 +57,10 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 		},
 	}
 
-	var res JoinResponse = JoinResponse{
-		Method: "join",
+	var res JoinAccepted = JoinAccepted{
+		Method: "joinAccepted",
 		Args: JoinArgs{
-			Y: y,
-			X: x,
+			Id: clientId,
 		},
 	}
 	resJSON, err := json.Marshal(res)

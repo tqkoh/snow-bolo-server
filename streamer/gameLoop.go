@@ -2,6 +2,7 @@ package streamer
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -12,12 +13,12 @@ type updateArgs struct {
 }
 
 type update struct {
-	Method string `json:"method"`
-	Args   updateArgs
+	Method string     `json:"method"`
+	Args   updateArgs `json:"args"`
 }
 
 func gameLoop(s *streamer) {
-	var frame = 0
+	var frame int = 0
 	var prev = time.Now()
 	for {
 		frame += 1
@@ -35,17 +36,19 @@ func gameLoop(s *streamer) {
 			}
 
 			// update velocity
-			if input.W {
-				u.Vy -= (V_MAX - u.Vy) * V_K
+			if input.W == input.S {
+				u.Vy += -u.Vy * V_K
+			} else if input.W {
+				u.Vy += (-u.Vy/V_MAX - 1) * V_MAX * V_K
+			} else {
+				u.Vy += (1 - u.Vy/V_MAX) * V_MAX * V_K
 			}
-			if input.A {
-				u.Vx -= (V_MAX - u.Vx) * V_K
-			}
-			if input.S {
-				u.Vy += (V_MAX - u.Vy) * V_K
-			}
-			if input.D {
-				u.Vx += (V_MAX - u.Vx) * V_K
+			if input.A == input.D {
+				u.Vx += -u.Vx * V_K
+			} else if input.A {
+				u.Vx += (-u.Vx/V_MAX - 1) * V_MAX * V_K
+			} else {
+				u.Vx += (1 - u.Vx/V_MAX) * V_MAX * V_K
 			}
 
 			// update position
@@ -105,6 +108,7 @@ func gameLoop(s *streamer) {
 			}
 			var updateJSON, _ = json.Marshal(update)
 			s.send(updateJSON, func(c *client) bool { return true })
+			fmt.Printf("update sent\n")
 		}
 
 		// wait for next frame
