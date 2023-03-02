@@ -3,52 +3,52 @@ package streamer
 import "github.com/gofrs/uuid"
 
 type user struct {
-	id               uuid.UUID
-	name             string
-	mass             float32
-	strength         int
-	y                float32
-	x                float32
-	vy               float32
-	vx               float32
-	leftClickLength  int
-	rightClickLength int
-	input            chan Input
-	previnput        Input
+	Id               uuid.UUID  `json:"id"`
+	Name             string     `json:"name"`
+	Mass             float32    `json:"mass"`
+	Strength         int        `json:"strength"`
+	Y                float32    `json:"y"`
+	X                float32    `json:"x"`
+	Vy               float32    `json:"vy"`
+	Vx               float32    `json:"vx"`
+	LeftClickLength  int        `json:"leftClickLength"`
+	RightClickLength int        `json:"rightClickLength"`
+	Input            chan Input `json:"input"`
+	PrevInput        Input      `json:"prevInput"`
 }
 
 var users map[uuid.UUID]*user = make(map[uuid.UUID]*user)
 
 type userReduced struct {
-	id               uuid.UUID
-	name             string
-	mass             float32
-	strength         int
-	y                float32
-	x                float32
-	vy               float32
-	vx               float32
-	leftClickLength  int
-	rightClickLength int
+	Id               uuid.UUID `json:"id"`
+	Name             string    `json:"name"`
+	Mass             float32   `json:"mass"`
+	Strength         int       `json:"strength"`
+	Y                float32   `json:"y"`
+	X                float32   `json:"x"`
+	Vy               float32   `json:"vy"`
+	Vx               float32   `json:"vx"`
+	LeftClickLength  int       `json:"leftClickLength"`
+	RightClickLength int       `json:"rightClickLength"`
 }
 
 type bullet struct {
-	id    uuid.UUID
-	owner uuid.UUID
-	mass  float32
-	y     float32
-	x     float32
-	vy    float32
-	vx    float32
+	Id    uuid.UUID `json:"id"`
+	Owner uuid.UUID `json:"owner"`
+	Mass  float32   `json:"mass"`
+	Y     float32   `json:"y"`
+	X     float32   `json:"x"`
+	Vy    float32   `json:"vy"`
+	Vx    float32   `json:"vx"`
 }
 
 var bullets map[uuid.UUID]*bullet = make(map[uuid.UUID]*bullet)
 
 type feed struct {
-	id   uuid.UUID
-	mass float32
-	y    float32
-	x    float32
+	Id   uuid.UUID `json:"id"`
+	Mass float32   `json:"mass"`
+	Y    float32   `json:"y"`
+	X    float32   `json:"x"`
 }
 
 var feeds map[uuid.UUID]*feed = make(map[uuid.UUID]*feed)

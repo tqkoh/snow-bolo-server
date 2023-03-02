@@ -46,4 +46,4 @@ branch:
   master:
     https: "on"
   # dev:
-  #   https: "off"
+  #   https: "on"

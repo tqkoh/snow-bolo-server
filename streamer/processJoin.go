@@ -12,8 +12,14 @@ type Join struct {
 	Name string `json:"name"`
 }
 
+type JoinArgs struct {
+	Y float32 `json:"y"`
+	X float32 `json:"x"`
+}
+
 type JoinResponse struct {
-	Method string `json:"method"`
+	Method string   `json:"method"`
+	Args   JoinArgs `json:"args"`
 }
 
 func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
@@ -25,17 +31,22 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 		return fmt.Errorf("invalid type for name\n")
 	}
 
+	var y = float32(rand.Intn(MAP_HEIGHT))
+	var x = float32(rand.Intn(MAP_WIDTH))
+
 	users[clientId] = &user{
-		id:               clientId,
-		name:             name,
-		y:                float32(rand.Intn(MAP_HEIGHT)),
-		x:                float32(rand.Intn(MAP_WIDTH)),
-		vy:               0,
-		vx:               0,
-		leftClickLength:  0,
-		rightClickLength: 0,
-		input:            make(chan Input, 10),
-		previnput: Input{
+		Id:               clientId,
+		Name:             name,
+		Mass:             MASS_INIT,
+		Strength:         STRENGTH_INIT,
+		Y:                y,
+		X:                x,
+		Vy:               0,
+		Vx:               0,
+		LeftClickLength:  0,
+		RightClickLength: 0,
+		Input:            make(chan Input, 10),
+		PrevInput: Input{
 			W:     false,
 			A:     false,
 			S:     false,
@@ -47,7 +58,13 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 		},
 	}
 
-	var res JoinResponse = JoinResponse{}
+	var res JoinResponse = JoinResponse{
+		Method: "join",
+		Args: JoinArgs{
+			Y: y,
+			X: x,
+		},
+	}
 	resJSON, err := json.Marshal(res)
 	if err != nil {
 		return err
