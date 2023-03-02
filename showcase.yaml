@@ -20,7 +20,7 @@ work_dir: "."
 # entrypoint: "cat"
 
 # which port to proxy via http(80) (default: null)
-http_proxy: 8080
+http_proxy: 3939
 
 # which port to expose <array or int> (default: [])
 expose: []
@@ -37,11 +37,13 @@ cname: []
 internal: "off"
 
 # use secure access <"off", "on"> (default: "off")
-https: "off"
+# https: "off"
 
 # <<< branch deploy setting >>>
 
 # custom deploy setting <see document!> (default: {master: null})
 branch:
-  master: null
-  #
+  master:
+    https: "on"
+  # dev:
+  #   https: "on"

@@ -1,6 +1,7 @@
 package streamer
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gofrs/uuid"
@@ -24,6 +25,8 @@ type payload struct {
 }
 
 func (s *streamer) Listen() {
+	go gameLoop(s)
+
 	for {
 		data := <-s.receiver
 
@@ -36,11 +39,20 @@ func (s *streamer) Listen() {
 	}
 }
 
-func (s *streamer) send(message string, cond func(c *client) bool) error {
+func (s *streamer) send(message []byte, cond func(c *client) bool) error {
 	for _, c := range s.clients {
 		if cond(c) {
 			c.sender <- message
 		}
 	}
+	return nil
+}
+
+func (s *streamer) sendTo(id uuid.UUID, message []byte) error {
+	c, ok := s.clients[id]
+	if !ok {
+		return fmt.Errorf("client not found")
+	}
+	c.sender <- message
 	return nil
 }

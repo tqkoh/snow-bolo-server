@@ -37,5 +37,5 @@ func main() {
 
 	go s.Listen()
 
-	e.Logger.Panic(e.Start(":8080"))
+	e.Logger.Panic(e.Start(":3939"))
 }

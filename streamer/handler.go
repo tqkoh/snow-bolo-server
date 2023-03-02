@@ -18,12 +18,18 @@ func (s *streamer) handlerWebSocket(data receiveData) error {
 
 	switch req.Method {
 	case "message":
-		fmt.Printf("message received")
+		fmt.Printf("message received\n")
 		sendMessage, ok := req.Args["message"].(string)
 		if !ok {
-			return fmt.Errorf("invalid type for message")
+			return fmt.Errorf("invalid type for message\n")
 		}
-		s.send(sendMessage, func(_ *client) bool { return true })
+		s.send([]byte(sendMessage), func(_ *client) bool { return true })
+	case "join":
+		fmt.Printf("join received\n")
+		processJoin(s, data.id, req.Args)
+	case "input":
+		fmt.Printf("input received\n")
+		processInput(s, data.id, req.Args)
 	default:
 		fmt.Printf("invalid method")
 	}

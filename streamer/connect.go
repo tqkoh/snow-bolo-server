@@ -33,6 +33,7 @@ func (s *streamer) ConnectWS(c echo.Context) error {
 
 	<-client.closer
 
+	delete(users, client.id)
 	delete(s.clients, client.id)
 
 	return c.NoContent(http.StatusOK)
