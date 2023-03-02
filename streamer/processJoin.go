@@ -12,7 +12,9 @@ type Join struct {
 	Name string `json:"name"`
 }
 
-type AcceptJoin struct{}
+type JoinResponse struct {
+	Method string `json:"method"`
+}
 
 func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	if _, ok := args["name"]; !ok {
@@ -45,7 +47,7 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 		},
 	}
 
-	var res AcceptJoin = AcceptJoin{}
+	var res JoinResponse = JoinResponse{}
 	resJSON, err := json.Marshal(res)
 	if err != nil {
 		return err

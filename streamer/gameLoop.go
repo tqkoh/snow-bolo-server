@@ -1,9 +1,23 @@
 package streamer
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 const V_MAX = 2
 const V_K = 0.5
+
+type updateArgs struct {
+	Users   []userReduced `json:"users"`
+	Bullets []bullet      `json:"bullets"`
+	Feeds   []feed        `json:"feeds"`
+}
+
+type update struct {
+	Method string `json:"method"`
+	Args   updateArgs
+}
 
 func gameLoop(s *streamer) {
 	var prev = time.Now()
@@ -57,6 +71,40 @@ func gameLoop(s *streamer) {
 			}
 		}
 		// send state to all clients
+		var u []userReduced = make([]userReduced, 0)
+		for _, user := range users {
+			u = append(u, userReduced{
+				id:               user.id,
+				name:             user.name,
+				mass:             user.mass,
+				strength:         user.strength,
+				y:                user.y,
+				x:                user.x,
+				vy:               user.vy,
+				vx:               user.vx,
+				leftClickLength:  user.leftClickLength,
+				rightClickLength: user.rightClickLength,
+			})
+		}
+		var bu []bullet = make([]bullet, 0)
+		for _, bullet := range bullets { // todo: send only bullets or feed when appear
+			bu = append(bu, *bullet)
+		}
+		var f []feed = make([]feed, 0)
+		for _, feed := range feeds {
+			f = append(f, *feed)
+		}
+		var args = updateArgs{
+			Users:   u,
+			Bullets: bu,
+			Feeds:   f,
+		}
+		var update = update{
+			Method: "update",
+			Args:   args,
+		}
+		var updateJSON, _ = json.Marshal(update)
+		s.send(updateJSON, func(c *client) bool { return true })
 
 		// wait for next frame
 		var now = time.Now()
