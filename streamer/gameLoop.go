@@ -2,7 +2,7 @@ package streamer
 
 import (
 	"encoding/json"
-	"fmt"
+	"math"
 	"time"
 )
 
@@ -55,12 +55,36 @@ func gameLoop(s *streamer) {
 			u.Y += u.Vy
 			u.X += u.Vx
 
+			if u.Y < MAP_MARGIN {
+				u.Y = MAP_MARGIN
+				u.Vy = 0
+			}
+			if u.Y >= MAP_HEIGHT-MAP_MARGIN {
+				u.Y = MAP_HEIGHT - MAP_MARGIN
+				u.Vy = 0
+			}
+			if u.X < MAP_MARGIN {
+				u.X = MAP_MARGIN
+				u.Vx = 0
+			}
+			if u.X >= MAP_HEIGHT-MAP_MARGIN {
+				u.X = MAP_HEIGHT - MAP_MARGIN
+				u.Vx = 0
+			}
+
+			u.Mass += math.Sqrt(u.Vy*u.Vy+u.Vx*u.Vx) * math.Sqrt(u.Mass) * MASS_K
+
+			u.Dy = input.Dy
+			u.Dx = input.Dx
+
 			// update previnput
 			u.PrevInput = input
 
 			// update leftClickLength
 			if input.Left {
-				u.LeftClickLength++
+				if u.LeftClickLength < 60 {
+					u.LeftClickLength++
+				}
 			} else {
 				u.LeftClickLength = 0
 			}
@@ -85,6 +109,8 @@ func gameLoop(s *streamer) {
 					X:                user.X,
 					Vy:               user.Vy,
 					Vx:               user.Vx,
+					Dy:               user.Dy,
+					Dx:               user.Dx,
 					LeftClickLength:  user.LeftClickLength,
 					RightClickLength: user.RightClickLength,
 				})
@@ -108,7 +134,6 @@ func gameLoop(s *streamer) {
 			}
 			var updateJSON, _ = json.Marshal(update)
 			s.send(updateJSON, func(c *client) bool { return true })
-			fmt.Printf("update sent\n")
 		}
 
 		// wait for next frame
