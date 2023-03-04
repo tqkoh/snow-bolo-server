@@ -40,6 +40,7 @@ type bullet struct {
 	Id    uuid.UUID `json:"id"`
 	Owner uuid.UUID `json:"owner"`
 	Mass  float64   `json:"mass"`
+	Life  int       `json:"life"`
 	Y     float64   `json:"y"`
 	X     float64   `json:"x"`
 	Vy    float64   `json:"vy"`
@@ -53,6 +54,8 @@ type feed struct {
 	Mass float64   `json:"mass"`
 	Y    float64   `json:"y"`
 	X    float64   `json:"x"`
+	Vy   float64   `json:"vy"`
+	Vx   float64   `json:"vx"`
 }
 
 var feeds map[uuid.UUID]*feed = make(map[uuid.UUID]*feed)

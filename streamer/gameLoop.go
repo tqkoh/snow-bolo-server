@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"math"
 	"time"
+
+	"github.com/gofrs/uuid"
 )
 
 type updateArgs struct {
@@ -36,19 +38,24 @@ func gameLoop(s *streamer) {
 			}
 
 			// update velocity
+			var vLimit = V_MIN
+			if u.Mass < V_ATTACK {
+				vLimit += (V_ATTACK - u.Mass) / V_ATTACK * (V_MAX - V_MIN)
+			}
+
 			if input.W == input.S {
 				u.Vy += -u.Vy * V_K
 			} else if input.W {
-				u.Vy += (-u.Vy/V_MAX - 1) * V_MAX * V_K
+				u.Vy += (-u.Vy/vLimit - 1) * vLimit * V_K
 			} else {
-				u.Vy += (1 - u.Vy/V_MAX) * V_MAX * V_K
+				u.Vy += (1 - u.Vy/vLimit) * vLimit * V_K
 			}
 			if input.A == input.D {
 				u.Vx += -u.Vx * V_K
 			} else if input.A {
-				u.Vx += (-u.Vx/V_MAX - 1) * V_MAX * V_K
+				u.Vx += (-u.Vx/vLimit - 1) * vLimit * V_K
 			} else {
-				u.Vx += (1 - u.Vx/V_MAX) * V_MAX * V_K
+				u.Vx += (1 - u.Vx/vLimit) * vLimit * V_K
 			}
 
 			// update position
@@ -86,6 +93,26 @@ func gameLoop(s *streamer) {
 					u.LeftClickLength++
 				}
 			} else {
+				if u.LeftClickLength > 0 {
+					var id = uuid.Must(uuid.NewV4())
+					var l = math.Sqrt(float64(u.Dy*u.Dy + u.Dx*u.Dx))
+					var t = l*l - (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy))
+					var Hx = float64(u.Dx) * t
+					var Hy = float64(u.Dy) * t
+					var mass = u.Mass * float64(u.LeftClickLength) / 60 * MAX_BULLET_MASS
+					bullets[id] = &bullet{
+						Id:    id,
+						Owner: u.Id,
+						Mass:  mass,
+						Life:  BULLET_LIFE,
+						Y:     u.Y,
+						X:     u.X,
+						Vy:    Hy - Hy + float64(u.Dy)/l*BULLET_V,
+						Vx:    Hx - Hx + float64(u.Dx)/l*BULLET_V,
+					}
+
+					u.Mass -= mass
+				}
 				u.LeftClickLength = 0
 			}
 
@@ -96,6 +123,69 @@ func gameLoop(s *streamer) {
 				u.RightClickLength = 0
 			}
 		}
+
+		// update bullets' state
+		for _, b := range bullets {
+			b.Life -= 1
+
+			if b.Life <= 0 {
+				feeds[b.Id] = &feed{
+					Id:   b.Id,
+					Mass: b.Mass,
+					Y:    b.Y,
+					X:    b.X,
+					Vy:   b.Vy,
+					Vx:   b.Vx,
+				}
+				delete(bullets, b.Id) // safe
+				continue
+			}
+
+			b.Y += b.Vy
+			b.X += b.Vx
+			if b.Y < MAP_MARGIN {
+				b.Y = MAP_MARGIN
+				b.Vy = 0
+			}
+			if b.Y >= MAP_HEIGHT-MAP_MARGIN {
+				b.Y = MAP_HEIGHT - MAP_MARGIN
+				b.Vy = 0
+			}
+			if b.X < MAP_MARGIN {
+				b.X = MAP_MARGIN
+				b.Vx = 0
+			}
+			if b.X >= MAP_HEIGHT-MAP_MARGIN {
+				b.X = MAP_HEIGHT - MAP_MARGIN
+				b.Vx = 0
+			}
+		}
+
+		// update feeds' state
+		for _, f := range feeds {
+			f.Vy += -f.Vy * V_K
+			f.Vx += -f.Vx * V_K
+
+			f.Y += f.Vy
+			f.X += f.Vx
+			if f.Y < MAP_MARGIN {
+				f.Y = MAP_MARGIN
+				f.Vy = 0
+			}
+			if f.Y >= MAP_HEIGHT-MAP_MARGIN {
+				f.Y = MAP_HEIGHT - MAP_MARGIN
+				f.Vy = 0
+			}
+			if f.X < MAP_MARGIN {
+				f.X = MAP_MARGIN
+				f.Vx = 0
+			}
+			if f.X >= MAP_HEIGHT-MAP_MARGIN {
+				f.X = MAP_HEIGHT - MAP_MARGIN
+				f.Vx = 0
+			}
+		}
+
 		// send state to all clients
 		if frame%SEND_STATE_PER == 0 {
 			var u []userReduced = make([]userReduced, 0)
