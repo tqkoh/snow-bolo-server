@@ -2,6 +2,7 @@ package streamer
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"time"
 
@@ -96,9 +97,13 @@ func gameLoop(s *streamer) {
 				if u.LeftClickLength > 0 {
 					var id = uuid.Must(uuid.NewV4())
 					var l = math.Sqrt(float64(u.Dy*u.Dy + u.Dx*u.Dx))
-					var t = l*l - (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy))
+					if l == 0 {
+						l = math.Nextafter(0, 1)
+					}
+					var t = (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy)) / (l * l)
 					var Hx = float64(u.Dx) * t
 					var Hy = float64(u.Dy) * t
+					fmt.Println(Hx, Hy, t, "asdsf----------------------------------------------------")
 					var mass = u.Mass * float64(u.LeftClickLength) / 60 * MAX_BULLET_MASS
 					bullets[id] = &bullet{
 						Id:    id,
@@ -107,8 +112,8 @@ func gameLoop(s *streamer) {
 						Life:  BULLET_LIFE,
 						Y:     u.Y,
 						X:     u.X,
-						Vy:    Hy - Hy + float64(u.Dy)/l*BULLET_V,
-						Vx:    Hx - Hx + float64(u.Dx)/l*BULLET_V,
+						Vy:    Hy + float64(u.Dy)/l*BULLET_V,
+						Vx:    Hx + float64(u.Dx)/l*BULLET_V,
 					}
 
 					u.Mass -= mass
