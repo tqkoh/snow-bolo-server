@@ -38,32 +38,70 @@ var kdEntities *kd.KD[*P]
 func radiusFromMass(mass float64) float64 {
 	var r6 = math.Sqrt(6)
 	if mass > 2000./9.*r6 {
-		return (-math.Pow(math.E, -(mass-2000./9.*r6)/10000) + 1) * RADIUS_M
+		return (-math.Pow(math.E, -(mass-2000./9.*r6)/10000)+1)*RADIUS_M +
+			10./3.*r6
 	}
 	return math.Pow(mass, 1./3.)
 }
 
 func processCollide(t *user, u *user) {
+	// check if t and u are approaching each other
 	var dy = t.Y - u.Y
 	var dx = t.X - u.X
-	var theta = math.Atan2(dy, dx) + math.Pi/2
-	var v0ty = t.Vy*math.Cos(theta) + t.Vx*math.Sin(theta)
-	var v0tx = -t.Vy*math.Sin(theta) + t.Vx*math.Cos(theta)
-	var v0uy = u.Vy*math.Cos(theta) + u.Vx*math.Sin(theta)
-	var v0ux = -u.Vy*math.Sin(theta) + u.Vx*math.Cos(theta)
-	var v0y = v0ty - v0uy
-	var v0x = v0tx - v0ux
+	var dl = math.Sqrt(dy*dy + dx*dx)
+	if dl == 0 {
+		dl = math.Nextafter(0, 1)
+	}
 	var m = t.Mass
 	var M = u.Mass
+	{
+		var dyd = t.Y + t.Vy*CHECK_APPROACHING_EPS - (u.Y + u.Vy*CHECK_APPROACHING_EPS)
+		var dxd = t.X + t.Vx*CHECK_APPROACHING_EPS - (u.X + u.Vx*CHECK_APPROACHING_EPS)
+		var dld = math.Sqrt(dyd*dyd + dxd*dxd)
+		if dld > dl {
+			// update position
+			var dd = radiusFromMass(m) + radiusFromMass(M) - dl + 1
+			t.Y = t.Y + dd*(m/(m+M))*dy/dl
+			t.X = t.X + dd*(m/(m+M))*dx/dl
+			u.Y = u.Y - dd*(M/(m+M))*dy/dl
+			u.X = u.X - dd*(M/(m+M))*dx/dl
+
+			return
+		}
+	}
+
+	// update velocities of t and u
+	var theta = math.Atan2(dy, dx) + math.Pi/2
+	var v0ty = t.Vy*math.Cos(theta) - t.Vx*math.Sin(theta)
+	var v0tx = t.Vy*math.Sin(theta) + t.Vx*math.Cos(theta)
+	var v0uy = u.Vy*math.Cos(theta) - u.Vx*math.Sin(theta)
+	var v0ux = u.Vy*math.Sin(theta) + u.Vx*math.Cos(theta)
+	var v0y = v0ty - v0uy
+	var v0x = v0tx - v0ux
 	var e = 1.
-	var v1ty = (v0y*(e-1)*m)/(m+M) + v0uy
-	var v1uy = -(v0y*(m+e*M))/(m+M) + v0uy
+	var v1ty = (v0y*(m-e*M))/(m+M) + v0uy
+	var v1uy = (v0y*(m+e*m))/(m+M) + v0uy
 	var v1tx = v0x + v0ux
 	var v1ux = 0 + v0ux
 	t.Vy = v1ty*math.Cos(-theta) - v1tx*math.Sin(-theta)
 	t.Vx = v1ty*math.Sin(-theta) + v1tx*math.Cos(-theta)
 	u.Vy = v1uy*math.Cos(-theta) - v1ux*math.Sin(-theta)
 	u.Vx = v1uy*math.Sin(-theta) + v1ux*math.Cos(-theta)
+
+	// update position to avoid double collision
+	// var dd = radiusFromMass(m) + radiusFromMass(M) - dl + 1
+	// t.Y = t.Y + dd*(m/(m+M))*dy/dl
+	// t.X = t.X + dd*(m/(m+M))*dx/dl
+	// u.Y = u.Y + dd*(-M/(m+M))*dy/dl
+	// u.X = u.X + dd*(-M/(m+M))*dx/dl
+
+	// update hitstop and inoperable frames
+	var imt = math.Abs(m*v0ty - m*v1ty)
+	var imu = math.Abs(M*v0uy - M*v1uy)
+	t.HitStop = int(M / (M + m) * math.Max(0, math.Log(imt)) * HITSTOP_K)
+	u.HitStop = int(m / (M + m) * math.Max(0, math.Log(imu)) * HITSTOP_K)
+	t.InOperable = t.HitStop * 2
+	u.InOperable = u.HitStop * 2
 }
 
 func gameLoop(s *streamer) {
@@ -91,26 +129,35 @@ func gameLoop(s *streamer) {
 			} else {
 				input = <-u.Input
 			}
-
-			// update velocity
-			var vLimit = V_MIN
-			if u.Mass < V_ATTACK {
-				vLimit += (V_ATTACK - u.Mass) / V_ATTACK * (V_MAX - V_MIN)
-			}
-
-			if input.W == input.S {
-				u.Vy += -u.Vy * V_K
-			} else if input.W {
-				u.Vy += (-u.Vy/vLimit - 1) * vLimit * V_K
+			if u.InOperable > 0 {
+				u.InOperable -= 1
+				// input.W = false
+				// input.A = false
+				// input.S = false
+				// input.D = false
+				// input.Left = false
+				// input.Right = false
 			} else {
-				u.Vy += (1 - u.Vy/vLimit) * vLimit * V_K
-			}
-			if input.A == input.D {
-				u.Vx += -u.Vx * V_K
-			} else if input.A {
-				u.Vx += (-u.Vx/vLimit - 1) * vLimit * V_K
-			} else {
-				u.Vx += (1 - u.Vx/vLimit) * vLimit * V_K
+				// update velocity
+				var vLimit = V_MIN
+				if u.Mass < V_ATTACK {
+					vLimit += (V_ATTACK - u.Mass) / V_ATTACK * (V_MAX - V_MIN)
+				}
+
+				if input.W == input.S {
+					u.Vy += -u.Vy * V_K
+				} else if input.W {
+					u.Vy += (-u.Vy/vLimit - 1) * vLimit * V_K
+				} else {
+					u.Vy += (1 - u.Vy/vLimit) * vLimit * V_K
+				}
+				if input.A == input.D {
+					u.Vx += -u.Vx * V_K
+				} else if input.A {
+					u.Vx += (-u.Vx/vLimit - 1) * vLimit * V_K
+				} else {
+					u.Vx += (1 - u.Vx/vLimit) * vLimit * V_K
+				}
 			}
 
 			// update position
@@ -272,7 +319,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id {
+					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.InOperable == 0 && other.InOperable == 0 {
 						// collision
 						processCollide(u, other)
 					}
@@ -321,6 +368,8 @@ func gameLoop(s *streamer) {
 					Vx:               user.Vx,
 					Dy:               user.Dy,
 					Dx:               user.Dx,
+					HitStop:          user.HitStop,
+					InOperable:       user.InOperable,
 					LeftClickLength:  user.LeftClickLength,
 					RightClickLength: user.RightClickLength,
 				})

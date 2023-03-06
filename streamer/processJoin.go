@@ -45,6 +45,8 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 		Vx:               0,
 		LeftClickLength:  0,
 		RightClickLength: 0,
+		HitStop:          0,
+		InOperable:       0,
 		Input:            make(chan Input, 10),
 		PrevInput: Input{
 			W:     false,
