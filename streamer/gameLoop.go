@@ -43,6 +43,29 @@ func radiusFromMass(mass float64) float64 {
 	return math.Pow(mass, 1./3.)
 }
 
+func processCollide(t *user, u *user) {
+	var dy = t.Y - u.Y
+	var dx = t.X - u.X
+	var theta = math.Atan2(dy, dx) + math.Pi/2
+	var v0ty = t.Vy*math.Cos(theta) + t.Vx*math.Sin(theta)
+	var v0tx = -t.Vy*math.Sin(theta) + t.Vx*math.Cos(theta)
+	var v0uy = u.Vy*math.Cos(theta) + u.Vx*math.Sin(theta)
+	var v0ux = -u.Vy*math.Sin(theta) + u.Vx*math.Cos(theta)
+	var v0y = v0ty - v0uy
+	var v0x = v0tx - v0ux
+	var m = t.Mass
+	var M = u.Mass
+	var e = 1.
+	var v1ty = (v0y*(e-1)*m)/(m+M) + v0uy
+	var v1uy = -(v0y*(m+e*M))/(m+M) + v0uy
+	var v1tx = v0x + v0ux
+	var v1ux = 0 + v0ux
+	t.Vy = v1ty*math.Cos(-theta) - v1tx*math.Sin(-theta)
+	t.Vx = v1ty*math.Sin(-theta) + v1tx*math.Cos(-theta)
+	u.Vy = v1uy*math.Cos(-theta) - v1ux*math.Sin(-theta)
+	u.Vx = v1uy*math.Sin(-theta) + v1ux*math.Cos(-theta)
+}
+
 func gameLoop(s *streamer) {
 	var frame int = 0
 	var prev = time.Now()
@@ -249,12 +272,9 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
+					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id {
 						// collision
-						u.Vy = (u.Vy*float64(u.Mass) + other.Vy*float64(other.Mass)) / (float64(u.Mass) + float64(other.Mass))
-						other.Vy = (other.Vy*float64(other.Mass) + u.Vy*float64(u.Mass)) / (float64(other.Mass) + float64(u.Mass))
-						u.Vx = (u.Vx*float64(u.Mass) + other.Vx*float64(other.Mass)) / (float64(u.Mass) + float64(other.Mass))
-						other.Vx = (other.Vx*float64(other.Mass) + u.Vx*float64(u.Mass)) / (float64(other.Mass) + float64(u.Mass))
+						processCollide(u, other)
 					}
 				} else if p.tag[len(p.tag)-1] == 'B' {
 					var other = bullets[id]
