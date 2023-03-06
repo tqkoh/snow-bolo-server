@@ -6,6 +6,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/downflux/go-geometry/nd/vector"
+	"github.com/downflux/go-kd/kd"
+	"github.com/downflux/go-kd/point"
 	"github.com/gofrs/uuid"
 )
 
@@ -20,11 +23,39 @@ type update struct {
 	Args   updateArgs `json:"args"`
 }
 
+// kd
+var _ point.P = &P{}
+
+type P struct {
+	p   vector.V
+	tag string
+}
+
+func (p *P) P() vector.V { return p.p }
+
+var kdEntities *kd.KD[*P]
+
+func radiusFromMass(mass float64) float64 {
+	var r6 = math.Sqrt(6)
+	if mass > 2000./9.*r6 {
+		return (-math.Pow(math.E, -(mass-2000./9.*r6)/10000) + 1) * RADIUS_M
+	}
+	return math.Pow(mass, 1./3.)
+}
+
 func gameLoop(s *streamer) {
 	var frame int = 0
 	var prev = time.Now()
+
 	for {
 		frame += 1
+
+		kdEntities = kd.New(kd.O[*P]{
+			Data: []*P{},
+			K:    2,
+			N:    1,
+		})
+
 		// process users' input and update state
 		for _, u := range users {
 			// process input
@@ -62,7 +93,6 @@ func gameLoop(s *streamer) {
 			// update position
 			u.Y += u.Vy
 			u.X += u.Vx
-
 			if u.Y < MAP_MARGIN {
 				u.Y = MAP_MARGIN
 				u.Vy = 0
@@ -103,7 +133,6 @@ func gameLoop(s *streamer) {
 					var t = (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy)) / (l * l)
 					var Hx = float64(u.Dx) * t
 					var Hy = float64(u.Dy) * t
-					fmt.Println(Hx, Hy, t, "asdsf----------------------------------------------------")
 					var mass = u.Mass * float64(u.LeftClickLength) / 60 * MAX_BULLET_MASS
 					bullets[id] = &bullet{
 						Id:    id,
@@ -127,12 +156,16 @@ func gameLoop(s *streamer) {
 			} else {
 				u.RightClickLength = 0
 			}
+
+			kdEntities.Insert(&P{
+				p:   vector.V{u.X, u.Y},
+				tag: u.Id.String() + "U",
+			})
 		}
 
 		// update bullets' state
 		for _, b := range bullets {
 			b.Life -= 1
-
 			if b.Life <= 0 {
 				feeds[b.Id] = &feed{
 					Id:   b.Id,
@@ -164,6 +197,10 @@ func gameLoop(s *streamer) {
 				b.X = MAP_HEIGHT - MAP_MARGIN
 				b.Vx = 0
 			}
+			kdEntities.Insert(&P{
+				p:   vector.V{b.Y, b.X},
+				tag: b.Id.String() + "B",
+			})
 		}
 
 		// update feeds' state
@@ -173,6 +210,7 @@ func gameLoop(s *streamer) {
 
 			f.Y += f.Vy
 			f.X += f.Vx
+
 			if f.Y < MAP_MARGIN {
 				f.Y = MAP_MARGIN
 				f.Vy = 0
@@ -188,6 +226,63 @@ func gameLoop(s *streamer) {
 			if f.X >= MAP_HEIGHT-MAP_MARGIN {
 				f.X = MAP_HEIGHT - MAP_MARGIN
 				f.Vx = 0
+			}
+
+			kdEntities.Insert(&P{
+				p:   vector.V{f.Y, f.X},
+				tag: f.Id.String() + "F",
+			})
+		}
+
+		// process collision
+		for _, u := range users {
+			for _, p := range kd.KNN(kdEntities, vector.V{u.Y, u.X}, 5, func(p *P) bool { return true }) {
+				var id, err = uuid.FromString(p.tag[:len(p.tag)-1])
+				if err != nil {
+					fmt.Printf("uuid.FromString: p.tag was %v", p.tag)
+					panic(err)
+				}
+
+				if p.tag[len(p.tag)-1] == 'U' {
+					var other = users[id]
+
+					var dy = u.Y - other.Y
+					var dx = u.X - other.X
+					var l = math.Sqrt(dy*dy + dx*dx)
+					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
+						// collision
+						u.Vy = (u.Vy*float64(u.Mass) + other.Vy*float64(other.Mass)) / (float64(u.Mass) + float64(other.Mass))
+						other.Vy = (other.Vy*float64(other.Mass) + u.Vy*float64(u.Mass)) / (float64(other.Mass) + float64(u.Mass))
+						u.Vx = (u.Vx*float64(u.Mass) + other.Vx*float64(other.Mass)) / (float64(u.Mass) + float64(other.Mass))
+						other.Vx = (other.Vx*float64(other.Mass) + u.Vx*float64(u.Mass)) / (float64(other.Mass) + float64(u.Mass))
+					}
+				} else if p.tag[len(p.tag)-1] == 'B' {
+					var other = bullets[id]
+
+					var dy = u.Y - other.Y
+					var dx = u.X - other.X
+					var l = math.Sqrt(dy*dy + dx*dx)
+					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Owner {
+						// collision
+						u.Strength -= int(other.Mass/u.Mass) * 50
+						u.Mass += other.Mass * BULLET_K
+						u.Vy += other.Vy
+						delete(bullets, id)
+						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
+					}
+				} else if p.tag[len(p.tag)-1] == 'F' {
+					var other = feeds[id]
+
+					var dy = u.Y - other.Y
+					var dx = u.X - other.X
+					var l = math.Sqrt(dy*dy + dx*dx)
+					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
+						// collision
+						u.Mass += other.Mass
+						delete(feeds, id)
+						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
+					}
+				}
 			}
 		}
 

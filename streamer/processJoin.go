@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/downflux/go-geometry/nd/vector"
 	"github.com/gofrs/uuid"
 )
 
@@ -56,6 +57,10 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 			Dy:    0,
 		},
 	}
+	kdEntities.Insert(&P{
+		p:   vector.V{y, x},
+		tag: clientId.String() + "U",
+	})
 
 	var res JoinAccepted = JoinAccepted{
 		Method: "joinAccepted",

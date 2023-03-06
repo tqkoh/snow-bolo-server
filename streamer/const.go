@@ -14,6 +14,9 @@ const MASS_INIT = 1
 const MASS_K = 0.01
 const STRENGTH_INIT = 100
 
+const RADIUS_M = 50
+
 const BULLET_V = 1.
 const BULLET_LIFE = 100
+const BULLET_K = 0.1
 const MAX_BULLET_MASS = 1. / 3
