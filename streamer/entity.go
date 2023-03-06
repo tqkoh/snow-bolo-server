@@ -15,6 +15,8 @@ type user struct {
 	Dx               int        `json:"dx"`
 	LeftClickLength  int        `json:"leftClickLength"`
 	RightClickLength int        `json:"rightClickLength"`
+	HitStop          int        `json:"hitStop"`
+	InOperable       int        `json:"inOperable"`
 	Input            chan Input `json:"input"`
 	PrevInput        Input      `json:"prevInput"`
 }
@@ -34,6 +36,8 @@ type userReduced struct {
 	Dx               int       `json:"dx"`
 	LeftClickLength  int       `json:"leftClickLength"`
 	RightClickLength int       `json:"rightClickLength"`
+	HitStop          int       `json:"hitStop"`
+	InOperable       int       `json:"inOperable"`
 }
 
 type bullet struct {
