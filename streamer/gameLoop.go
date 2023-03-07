@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/downflux/go-geometry/nd/vector"
@@ -18,7 +19,6 @@ type updateArgs struct {
 	Bullets []bullet      `json:"bullets"`
 	Feeds   []feed        `json:"feeds"`
 }
-
 type update struct {
 	Method string     `json:"method"`
 	Args   updateArgs `json:"args"`
@@ -106,8 +106,16 @@ func processCollide(t *user, u *user) {
 
 	t.Damage += int(M / (m + M) * imt * STRENGTH_COLLISION_K)
 	u.Damage += int(m / (m + M) * imt * STRENGTH_COLLISION_K)
-	t.Strength -= int(M / (m + M) * imt * STRENGTH_COLLISION_K)
-	u.Strength -= int(m / (m + M) * imt * STRENGTH_COLLISION_K)
+	t.Strength -= M / (m + M) * imt * STRENGTH_COLLISION_K
+	u.Strength -= m / (m + M) * imt * STRENGTH_COLLISION_K
+	t.Mass *= COLLIDE_K
+	u.Mass *= COLLIDE_K
+	if t.Mass < 1 {
+		t.Mass = 1
+	}
+	if u.Mass < 1 {
+		u.Mass = 1
+	}
 }
 
 func gameLoop(s *streamer) {
@@ -166,15 +174,20 @@ func gameLoop(s *streamer) {
 				}
 
 				if u.RightClickLength > 0 {
-					u.Damage = -1
-					u.Mass *= PRESS_REDUCE
-					u.Mass -= PRESS_REDUCE_C
-					if u.Mass < 1 {
-						u.Mass = 1
-					}
-					u.Strength = int(math.Min(float64(u.Strength+PRESS_RECOVER), 100))
+
 					u.Vy *= PRESS_V_K
 					u.Vx *= PRESS_V_K
+					u.Strength = float64(u.Strength + PRESS_RECOVER)
+					u.Damage = -1
+					if u.Strength > 100 {
+						u.Strength = 100
+					} else {
+						u.Mass *= PRESS_REDUCE
+						u.Mass -= PRESS_REDUCE_C
+						if u.Mass < 1 {
+							u.Mass = 1
+						}
+					}
 				}
 			}
 
@@ -187,20 +200,21 @@ func gameLoop(s *streamer) {
 				u.Y += u.Vy
 				u.X += u.Vx
 			}
-			if u.Y < MAP_MARGIN {
-				u.Y = MAP_MARGIN
+			var radius = radiusFromMass(u.Mass)
+			if u.Y < MAP_MARGIN+radius {
+				u.Y = MAP_MARGIN + radius
 				u.Vy = 0
 			}
-			if u.Y >= MAP_HEIGHT-MAP_MARGIN {
-				u.Y = MAP_HEIGHT - MAP_MARGIN
+			if u.Y >= MAP_HEIGHT-MAP_MARGIN-radius {
+				u.Y = MAP_HEIGHT - MAP_MARGIN - radius
 				u.Vy = 0
 			}
-			if u.X < MAP_MARGIN {
-				u.X = MAP_MARGIN
+			if u.X < MAP_MARGIN+radius {
+				u.X = MAP_MARGIN + radius
 				u.Vx = 0
 			}
-			if u.X >= MAP_HEIGHT-MAP_MARGIN {
-				u.X = MAP_HEIGHT - MAP_MARGIN
+			if u.X >= MAP_HEIGHT-MAP_MARGIN-radius {
+				u.X = MAP_HEIGHT - MAP_MARGIN - radius
 				u.Vx = 0
 			}
 
@@ -244,7 +258,7 @@ func gameLoop(s *streamer) {
 						Vx:    Hx + BULLET_V*float64(u.Dx)/l,
 					}
 
-					u.Mass -= mass
+					u.Mass -= mass * BULLET_NEED
 					if u.Mass < 1 {
 						u.Mass = 1
 					}
@@ -374,7 +388,7 @@ func gameLoop(s *streamer) {
 						var im = math.Sqrt(imy*imy + imx*imx)
 						u.InOperable = INOPERABLE // int(M / (M + m) * math.Max(0, math.Log(im)) * INOPERABLE_K)
 						u.Damage += int(M / (m + M) * im * STRENGTH_HIT_K)
-						u.Strength -= int(M / (m + M) * im * STRENGTH_HIT_K)
+						u.Strength -= M / (m + M) * im * STRENGTH_HIT_K
 						u.Mass += other.Mass * BULLET_K
 						delete(bullets, id)
 						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
@@ -404,7 +418,7 @@ func gameLoop(s *streamer) {
 					Id:               user.Id,
 					Name:             user.Name,
 					Mass:             user.Mass,
-					Strength:         user.Strength,
+					Strength:         int(math.Min(user.Strength+1, 100)),
 					Damage:           user.Damage,
 					Y:                user.Y,
 					X:                user.X,
@@ -420,6 +434,8 @@ func gameLoop(s *streamer) {
 
 				user.Damage = 0
 			}
+			sort.Slice(u, func(i, j int) bool { return u[i].Mass > u[j].Mass })
+
 			var b []bullet = make([]bullet, 0)
 			for _, bullet := range bullets { // todo: send only bullets or feed when appear
 				b = append(b, *bullet)
