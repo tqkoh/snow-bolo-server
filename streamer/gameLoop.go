@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"time"
 
 	"github.com/downflux/go-geometry/nd/vector"
@@ -97,11 +98,16 @@ func processCollide(t *user, u *user) {
 
 	// update hitstop and inoperable frames
 	var imt = math.Abs(m*v0ty - m*v1ty)
-	var imu = math.Abs(M*v0uy - M*v1uy)
-	t.HitStop = int(M / (M + m) * math.Max(0, math.Log(imt)) * HITSTOP_K)
-	u.HitStop = int(m / (M + m) * math.Max(0, math.Log(imu)) * HITSTOP_K)
-	t.InOperable = t.HitStop * 2
-	u.InOperable = u.HitStop * 2
+	// var imu = math.Abs(M*v0uy - M*v1uy) // equal to imt
+	t.HitStop = HITSTOP
+	u.HitStop = HITSTOP
+	t.InOperable = int(M / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
+	u.InOperable = int(m / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
+
+	t.Damage += int(M / (m + M) * imt * STRENGTH_COLLISION_K)
+	u.Damage += int(m / (m + M) * imt * STRENGTH_COLLISION_K)
+	t.Strength -= int(M / (m + M) * imt * STRENGTH_COLLISION_K)
+	u.Strength -= int(m / (m + M) * imt * STRENGTH_COLLISION_K)
 }
 
 func gameLoop(s *streamer) {
@@ -158,11 +164,29 @@ func gameLoop(s *streamer) {
 				} else {
 					u.Vx += (1 - u.Vx/vLimit) * vLimit * V_K
 				}
+
+				if u.RightClickLength > 0 {
+					u.Damage = -1
+					u.Mass *= PRESS_REDUCE
+					u.Mass -= PRESS_REDUCE_C
+					if u.Mass < 1 {
+						u.Mass = 1
+					}
+					u.Strength = int(math.Min(float64(u.Strength+PRESS_RECOVER), 100))
+					u.Vy *= PRESS_V_K
+					u.Vx *= PRESS_V_K
+				}
 			}
 
 			// update position
-			u.Y += u.Vy
-			u.X += u.Vx
+			if u.HitStop > 0 {
+				u.HitStop -= 1
+				u.Y += float64(rand.Intn(3) - 1)
+				u.X += float64(rand.Intn(3) - 1)
+			} else {
+				u.Y += u.Vy
+				u.X += u.Vx
+			}
 			if u.Y < MAP_MARGIN {
 				u.Y = MAP_MARGIN
 				u.Vy = 0
@@ -180,6 +204,9 @@ func gameLoop(s *streamer) {
 				u.Vx = 0
 			}
 
+			if u.Mass < 1 {
+				u.Mass = 1
+			}
 			u.Mass += math.Sqrt(u.Vy*u.Vy+u.Vx*u.Vx) * math.Sqrt(u.Mass) * MASS_K
 
 			u.Dy = input.Dy
@@ -204,18 +231,23 @@ func gameLoop(s *streamer) {
 					var Hx = float64(u.Dx) * t
 					var Hy = float64(u.Dy) * t
 					var mass = u.Mass * float64(u.LeftClickLength) / 60 * MAX_BULLET_MASS
+
+					var radiusAfter = radiusFromMass(u.Mass - mass)
 					bullets[id] = &bullet{
 						Id:    id,
 						Owner: u.Id,
 						Mass:  mass,
 						Life:  BULLET_LIFE,
-						Y:     u.Y,
-						X:     u.X,
-						Vy:    Hy + float64(u.Dy)/l*BULLET_V,
-						Vx:    Hx + float64(u.Dx)/l*BULLET_V,
+						Y:     u.Y + radiusAfter*float64(u.Dy)/l,
+						X:     u.X + radiusAfter*float64(u.Dx)/l,
+						Vy:    Hy + BULLET_V*float64(u.Dy)/l,
+						Vx:    Hx + BULLET_V*float64(u.Dx)/l,
 					}
 
 					u.Mass -= mass
+					if u.Mass < 1 {
+						u.Mass = 1
+					}
 				}
 				u.LeftClickLength = 0
 			}
@@ -228,7 +260,7 @@ func gameLoop(s *streamer) {
 			}
 
 			kdEntities.Insert(&P{
-				p:   vector.V{u.X, u.Y},
+				p:   vector.V{u.Y, u.X},
 				tag: u.Id.String() + "U",
 			})
 		}
@@ -319,7 +351,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.InOperable == 0 && other.InOperable == 0 {
+					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.HitStop <= 0 && other.HitStop <= 0 {
 						// collision
 						processCollide(u, other)
 					}
@@ -331,9 +363,19 @@ func gameLoop(s *streamer) {
 					var l = math.Sqrt(dy*dy + dx*dx)
 					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Owner {
 						// collision
-						u.Strength -= int(other.Mass/u.Mass) * 50
+						var m = u.Mass
+						var M = other.Mass
+						var v0y = u.Vy
+						var v0x = u.Vx
+						u.Vy = (u.Vy*m+other.Vy*M*KB_GAIN)/(m+M) + other.Vy*KB_C
+						u.Vx = (u.Vx*m+other.Vx*M*KB_GAIN)/(m+M) + other.Vx*KB_C
+						var imy = math.Abs(m*v0y - m*u.Vy)
+						var imx = math.Abs(m*v0x - m*u.Vx)
+						var im = math.Sqrt(imy*imy + imx*imx)
+						u.InOperable = INOPERABLE // int(M / (M + m) * math.Max(0, math.Log(im)) * INOPERABLE_K)
+						u.Damage += int(M / (m + M) * im * STRENGTH_HIT_K)
+						u.Strength -= int(M / (m + M) * im * STRENGTH_HIT_K)
 						u.Mass += other.Mass * BULLET_K
-						u.Vy += other.Vy
 						delete(bullets, id)
 						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
 					}
@@ -350,6 +392,7 @@ func gameLoop(s *streamer) {
 						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
 					}
 				}
+				// fmt.Printf("%v(%d,%d) | ", p.tag[len(p.tag)-1:], int(p.p[0]), int(p.p[1]))
 			}
 		}
 
@@ -362,6 +405,7 @@ func gameLoop(s *streamer) {
 					Name:             user.Name,
 					Mass:             user.Mass,
 					Strength:         user.Strength,
+					Damage:           user.Damage,
 					Y:                user.Y,
 					X:                user.X,
 					Vy:               user.Vy,
@@ -373,6 +417,8 @@ func gameLoop(s *streamer) {
 					LeftClickLength:  user.LeftClickLength,
 					RightClickLength: user.RightClickLength,
 				})
+
+				user.Damage = 0
 			}
 			var b []bullet = make([]bullet, 0)
 			for _, bullet := range bullets { // todo: send only bullets or feed when appear
@@ -391,7 +437,11 @@ func gameLoop(s *streamer) {
 				Method: "update",
 				Args:   args,
 			}
-			var updateJSON, _ = json.Marshal(update)
+			var updateJSON, err = json.Marshal(update)
+			if err != nil {
+				fmt.Printf("args: %v", args)
+				fmt.Printf("json.Marshal error: %v", err)
+			}
 			s.send(updateJSON, func(c *client) bool { return true })
 		}
 

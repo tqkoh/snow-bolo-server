@@ -7,6 +7,7 @@ type user struct {
 	Name             string     `json:"name"`
 	Mass             float64    `json:"mass"`
 	Strength         int        `json:"strength"`
+	Damage           int        `json:"damage"`
 	Y                float64    `json:"y"`
 	X                float64    `json:"x"`
 	Vy               float64    `json:"vy"`
@@ -28,6 +29,7 @@ type userReduced struct {
 	Name             string    `json:"name"`
 	Mass             float64   `json:"mass"`
 	Strength         int       `json:"strength"`
+	Damage           int       `json:"damage"`
 	Y                float64   `json:"y"`
 	X                float64   `json:"x"`
 	Vy               float64   `json:"vy"`
