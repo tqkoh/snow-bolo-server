@@ -228,7 +228,7 @@ func gameLoop(s *streamer) {
 			}
 
 			kdEntities.Insert(&P{
-				p:   vector.V{u.X, u.Y},
+				p:   vector.V{u.Y, u.X},
 				tag: u.Id.String() + "U",
 			})
 		}
@@ -319,7 +319,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.InOperable == 0 && other.InOperable == 0 {
+					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id {
 						// collision
 						processCollide(u, other)
 					}
@@ -350,7 +350,9 @@ func gameLoop(s *streamer) {
 						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
 					}
 				}
+				// fmt.Printf("%v(%d,%d) | ", p.tag[len(p.tag)-1:], int(p.p[0]), int(p.p[1]))
 			}
+			fmt.Printf("\n")
 		}
 
 		// send state to all clients
