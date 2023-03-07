@@ -1,8 +1,6 @@
 package streamer
 
 import (
-	"fmt"
-
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -39,7 +37,7 @@ func (c *client) listen() {
 		if messageType != websocket.TextMessage {
 			continue
 		}
-		fmt.Printf("message: %s\n", message)
+		// fmt.Printf("message: %s\n", message)
 
 		c.receiver <- receiveData{
 			id:      c.id,
@@ -58,5 +56,6 @@ func (c *client) send() {
 			c.closer <- true
 			return
 		}
+		// fmt.Printf("sent: %s\n", message)
 	}
 }
