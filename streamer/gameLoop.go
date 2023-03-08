@@ -24,6 +24,14 @@ type update struct {
 	Args   updateArgs `json:"args"`
 }
 
+type deadArgs struct {
+	By uuid.UUID `json:"by"`
+}
+type dead struct {
+	Method string   `json:"method"`
+	Args   deadArgs `json:"args"`
+}
+
 // kd
 var _ point.P = &P{}
 
@@ -36,6 +44,35 @@ func (p *P) P() vector.V { return p.p }
 
 var kdEntities *kd.KD[*P]
 
+func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string) {
+	var m = BroadcastMessage{
+		Method: "message",
+		Args: MessageArgs{
+			Message: log,
+		},
+	}
+	resJSON, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	s.send(resJSON, func(_ *client) bool { return true })
+
+	var m2 = dead{
+		Method: "dead",
+		Args: deadArgs{
+			By: by,
+		},
+	}
+	resJSON2, err := json.Marshal(m2)
+	if err != nil {
+		panic(err)
+	}
+	s.sendTo(uId, resJSON2)
+
+	kdEntities.Remove(vector.V{users[uId].Y, users[uId].X}, func(q *P) bool { return uId.String() == q.tag })
+	delete(users, uId)
+}
+
 func radiusFromMass(mass float64) float64 {
 	var r6 = math.Sqrt(6)
 	if mass > 2000./9.*r6 {
@@ -45,7 +82,7 @@ func radiusFromMass(mass float64) float64 {
 	return math.Pow(mass, 1./3.)
 }
 
-func processCollide(t *user, u *user) {
+func processCollide(s *streamer, t *user, u *user) {
 	// check if t and u are approaching each other
 	var dy = t.Y - u.Y
 	var dx = t.X - u.X
@@ -115,6 +152,12 @@ func processCollide(t *user, u *user) {
 	}
 	if u.Mass < 1 {
 		u.Mass = 1
+	}
+	if u.Strength <= 0 {
+		processDead(s, u.Id, t.Id, fmt.Sprintf("%v was hit by %v", u.Name, users[t.Id].Name))
+	}
+	if t.Strength <= 0 {
+		processDead(s, t.Id, u.Id, fmt.Sprintf("%v was hit by %v", t.Name, users[u.Id].Name))
 	}
 }
 
@@ -360,17 +403,23 @@ func gameLoop(s *streamer) {
 				}
 
 				if p.tag[len(p.tag)-1] == 'U' {
-					var other = users[id]
+					var other, ok = users[id]
+					if !ok {
+						continue
+					}
 
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
 					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.HitStop <= 0 && other.HitStop <= 0 {
 						// collision
-						processCollide(u, other)
+						processCollide(s, u, other)
 					}
 				} else if p.tag[len(p.tag)-1] == 'B' {
-					var other = bullets[id]
+					var other, ok = bullets[id]
+					if !ok {
+						continue
+					}
 
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
@@ -390,11 +439,19 @@ func gameLoop(s *streamer) {
 						u.Damage += int(M / (m + M) * im * STRENGTH_HIT_K)
 						u.Strength -= M / (m + M) * im * STRENGTH_HIT_K
 						u.Mass += other.Mass * BULLET_K
+
+						if u.Strength <= 0 {
+							processDead(s, u.Id, other.Id, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name))
+						}
+
 						delete(bullets, id)
 						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
 					}
 				} else if p.tag[len(p.tag)-1] == 'F' {
-					var other = feeds[id]
+					var other, ok = feeds[id]
+					if !ok {
+						continue
+					}
 
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
