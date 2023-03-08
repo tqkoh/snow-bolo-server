@@ -48,7 +48,12 @@ func (c *client) listen() {
 
 func (c *client) send() {
 	for {
-		message := <-c.sender
+		message, ok := <-c.sender
+
+		if !ok {
+			c.closer <- true
+			return
+		}
 
 		err := c.conn.WriteMessage(websocket.TextMessage, message)
 

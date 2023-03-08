@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/tqkoh/snowball-server/streamer/utils"
 )
 
 var upgrader = websocket.Upgrader{
@@ -34,8 +35,13 @@ func (s *streamer) ConnectWS(c echo.Context) error {
 
 	<-client.closer
 
-	processDead(s, client.id, client.id, fmt.Sprintf("%v disconnected", users[client.id].Name), true)
-	delete(s.clients, client.id)
+	u, ok := users[client.id]
+	name := "unknown"
+	if ok {
+		name = u.Name
+	}
+	processDead(s, client.id, client.id, fmt.Sprintf("%v disconnected", name), true)
+	utils.Del(s.clients, client.id)
 
 	return c.NoContent(http.StatusOK)
 }
