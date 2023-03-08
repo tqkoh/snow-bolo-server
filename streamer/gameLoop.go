@@ -12,6 +12,7 @@ import (
 	"github.com/downflux/go-kd/kd"
 	"github.com/downflux/go-kd/point"
 	"github.com/gofrs/uuid"
+	"github.com/tqkoh/snowball-server/streamer/utils"
 )
 
 type updateArgs struct {
@@ -44,6 +45,11 @@ func (p *P) P() vector.V { return p.p }
 var kdEntities *kd.KD[*P]
 
 func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnected bool) {
+	u, ok := users[uId]
+	if !ok {
+		return
+	}
+
 	var m = BroadcastMessage{
 		Method: "message",
 		Args: MessageArgs{
@@ -75,29 +81,28 @@ func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnec
 		var id = uuid.Must(uuid.NewV4())
 		feeds[id] = &feed{
 			Id:   id,
-			Mass: users[uId].Mass * DEAD_MASS_CENTER,
-			Y:    users[uId].Y,
-			X:    users[uId].X,
-			Vy:   users[uId].Vy,
-			Vx:   users[uId].Vx,
+			Mass: u.Mass * DEAD_MASS_CENTER,
+			Y:    u.Y,
+			X:    u.X,
+			Vy:   u.Vy,
+			Vx:   u.Vx,
 		}
 	}
 	for i := 0; i < DEAD_MASS_MINI_NUM; i++ {
 		var id = uuid.Must(uuid.NewV4())
 		var theta = rand.Float64() * 2 * math.Pi
-		var r = radiusFromMass(users[uId].Mass * DEAD_MASS_CENTER)
+		var r = radiusFromMass(u.Mass * DEAD_MASS_CENTER)
 		feeds[id] = &feed{
 			Id:   id,
-			Mass: users[uId].Mass * DEAD_MASS_MINI,
-			Y:    users[uId].Y + r*math.Sin(theta),
-			X:    users[uId].X + r*math.Cos(theta),
-			Vy:   users[uId].Vy + DEAD_MASS_MINI_V*math.Sin(theta),
-			Vx:   users[uId].Vx + DEAD_MASS_MINI_V*math.Cos(theta),
+			Mass: u.Mass * DEAD_MASS_MINI,
+			Y:    u.Y + r*math.Sin(theta),
+			X:    u.X + r*math.Cos(theta),
+			Vy:   u.Vy + DEAD_MASS_MINI_V*math.Sin(theta),
+			Vx:   u.Vx + DEAD_MASS_MINI_V*math.Cos(theta),
 		}
 	}
-
-	kdEntities.Remove(vector.V{users[uId].Y, users[uId].X}, func(q *P) bool { return uId.String() == q.tag })
-	delete(users, uId)
+	kdEntities.Remove(vector.V{u.Y, u.X}, func(q *P) bool { return uId.String() == q.tag })
+	utils.Del(users, uId)
 }
 
 func radiusFromMass(mass float64) float64 {
@@ -363,7 +368,7 @@ func gameLoop(s *streamer) {
 					Vy:   b.Vy,
 					Vx:   b.Vx,
 				}
-				delete(bullets, b.Id) // safe
+				utils.Del(bullets, b.Id) // safe
 				continue
 			}
 
@@ -473,7 +478,7 @@ func gameLoop(s *streamer) {
 							processDead(s, u.Id, other.Id, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name), false)
 						}
 
-						delete(bullets, id)
+						utils.Del(bullets, id)
 						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
 					}
 				} else if p.tag[len(p.tag)-1] == 'F' {
@@ -488,7 +493,7 @@ func gameLoop(s *streamer) {
 					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
 						// collision
 						u.Mass += other.Mass
-						delete(feeds, id)
+						utils.Del(feeds, id)
 						kdEntities.Remove(p.p, func(q *P) bool { return p.tag == q.tag })
 					}
 				}
