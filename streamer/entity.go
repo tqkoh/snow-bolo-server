@@ -6,7 +6,7 @@ type user struct {
 	Id               uuid.UUID  `json:"id"`
 	Name             string     `json:"name"`
 	Mass             float64    `json:"mass"`
-	Strength         int        `json:"strength"`
+	Strength         float64    `json:"strength"`
 	Damage           int        `json:"damage"`
 	Y                float64    `json:"y"`
 	X                float64    `json:"x"`

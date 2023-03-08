@@ -31,8 +31,8 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 		return fmt.Errorf("invalid type for name\n")
 	}
 
-	var y = float64(rand.Intn(MAP_HEIGHT))
-	var x = float64(rand.Intn(MAP_WIDTH))
+	var y = float64(rand.Intn(MAP_HEIGHT-MAP_MARGIN*2) + MAP_MARGIN)
+	var x = float64(rand.Intn(MAP_WIDTH-MAP_MARGIN*2) + MAP_MARGIN)
 
 	users[clientId] = &user{
 		Id:               clientId,

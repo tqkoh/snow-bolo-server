@@ -22,7 +22,7 @@ func processMessage(s *streamer, clientId uuid.UUID, args map[string]interface{}
 		return fmt.Errorf("invalid type for message\n")
 	}
 
-	var res BroadcastMessage = BroadcastMessage{
+	var res = BroadcastMessage{
 		Method: "message",
 		Args: MessageArgs{
 			Message: sendMessage,

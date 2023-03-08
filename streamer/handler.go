@@ -18,13 +18,13 @@ func (s *streamer) handlerWebSocket(data receiveData) error {
 
 	switch req.Method {
 	case "message":
-		fmt.Printf("message received\n")
+		// fmt.Printf("message received\n")
 		processMessage(s, data.id, req.Args)
 	case "join":
-		fmt.Printf("join received\n")
+		// fmt.Printf("join received\n")
 		processJoin(s, data.id, req.Args)
 	case "input":
-		fmt.Printf("input received\n")
+		// fmt.Printf("input received\n")
 		processInput(s, data.id, req.Args)
 	default:
 		fmt.Printf("invalid method")

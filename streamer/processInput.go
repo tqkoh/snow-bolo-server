@@ -23,7 +23,9 @@ func processInput(s *streamer, clientId uuid.UUID, args map[string]interface{}) 
 		return err
 	}
 
-	// TODO: push input and later process it in the game loop every frame
-	users[clientId].Input <- input
+	// push input and later process it in the game loop every frame
+	if u, ok := users[clientId]; ok {
+		u.Input <- input
+	}
 	return nil
 }
