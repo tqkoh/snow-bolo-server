@@ -374,20 +374,21 @@ func gameLoop(s *streamer) {
 
 			b.Y += b.Vy
 			b.X += b.Vx
-			if b.Y < MAP_MARGIN {
-				b.Y = MAP_MARGIN
+			var radius = radiusFromMass(b.Mass)
+			if b.Y < MAP_MARGIN+radius {
+				b.Y = MAP_MARGIN + radius
 				b.Vy = 0
 			}
-			if b.Y >= MAP_HEIGHT-MAP_MARGIN {
-				b.Y = MAP_HEIGHT - MAP_MARGIN
+			if b.Y >= MAP_HEIGHT-MAP_MARGIN-radius {
+				b.Y = MAP_HEIGHT - MAP_MARGIN - radius
 				b.Vy = 0
 			}
-			if b.X < MAP_MARGIN {
-				b.X = MAP_MARGIN
+			if b.X < MAP_MARGIN+radius {
+				b.X = MAP_MARGIN + radius
 				b.Vx = 0
 			}
-			if b.X >= MAP_HEIGHT-MAP_MARGIN {
-				b.X = MAP_HEIGHT - MAP_MARGIN
+			if b.X >= MAP_HEIGHT-MAP_MARGIN-radius {
+				b.X = MAP_HEIGHT - MAP_MARGIN - radius
 				b.Vx = 0
 			}
 			kdEntities.Insert(&P{
@@ -404,20 +405,21 @@ func gameLoop(s *streamer) {
 			f.Y += f.Vy
 			f.X += f.Vx
 
-			if f.Y < MAP_MARGIN {
-				f.Y = MAP_MARGIN
+			radius := radiusFromMass(f.Mass)
+			if f.Y < MAP_MARGIN-radius {
+				f.Y = MAP_MARGIN - radius
 				f.Vy = 0
 			}
-			if f.Y >= MAP_HEIGHT-MAP_MARGIN {
-				f.Y = MAP_HEIGHT - MAP_MARGIN
+			if f.Y >= MAP_HEIGHT-MAP_MARGIN+radius {
+				f.Y = MAP_HEIGHT - MAP_MARGIN + radius
 				f.Vy = 0
 			}
-			if f.X < MAP_MARGIN {
-				f.X = MAP_MARGIN
+			if f.X < MAP_MARGIN-radius {
+				f.X = MAP_MARGIN - radius
 				f.Vx = 0
 			}
-			if f.X >= MAP_HEIGHT-MAP_MARGIN {
-				f.X = MAP_HEIGHT - MAP_MARGIN
+			if f.X >= MAP_HEIGHT-MAP_MARGIN+radius {
+				f.X = MAP_HEIGHT - MAP_MARGIN + radius
 				f.Vx = 0
 			}
 
