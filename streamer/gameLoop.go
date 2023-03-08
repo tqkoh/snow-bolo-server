@@ -25,7 +25,6 @@ type update struct {
 }
 
 type deadArgs struct {
-	By uuid.UUID `json:"by"`
 }
 type dead struct {
 	Method string   `json:"method"`
@@ -44,7 +43,7 @@ func (p *P) P() vector.V { return p.p }
 
 var kdEntities *kd.KD[*P]
 
-func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string) {
+func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnected bool) {
 	var m = BroadcastMessage{
 		Method: "message",
 		Args: MessageArgs{
@@ -57,17 +56,45 @@ func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string) {
 	}
 	s.send(resJSON, func(_ *client) bool { return true })
 
-	var m2 = dead{
-		Method: "dead",
-		Args: deadArgs{
-			By: by,
-		},
+	if !disconnected {
+		var m2 = dead{
+			Method: "dead",
+			Args:   deadArgs{},
+		}
+		resJSON2, err := json.Marshal(m2)
+		if err != nil {
+			panic(err)
+		}
+		if err = s.sendTo(uId, resJSON2); err != nil {
+			fmt.Println("sendTo error: ", err)
+		}
 	}
-	resJSON2, err := json.Marshal(m2)
-	if err != nil {
-		panic(err)
+
+	// destroy
+	{
+		var id = uuid.Must(uuid.NewV4())
+		feeds[id] = &feed{
+			Id:   id,
+			Mass: users[uId].Mass * DEAD_MASS_CENTER,
+			Y:    users[uId].Y,
+			X:    users[uId].X,
+			Vy:   users[uId].Vy,
+			Vx:   users[uId].Vx,
+		}
 	}
-	s.sendTo(uId, resJSON2)
+	for i := 0; i < DEAD_MASS_MINI_NUM; i++ {
+		var id = uuid.Must(uuid.NewV4())
+		var theta = rand.Float64() * 2 * math.Pi
+		var r = radiusFromMass(users[uId].Mass * DEAD_MASS_CENTER)
+		feeds[id] = &feed{
+			Id:   id,
+			Mass: users[uId].Mass * DEAD_MASS_MINI,
+			Y:    users[uId].Y + r*math.Sin(theta),
+			X:    users[uId].X + r*math.Cos(theta),
+			Vy:   users[uId].Vy + DEAD_MASS_MINI_V*math.Sin(theta),
+			Vx:   users[uId].Vx + DEAD_MASS_MINI_V*math.Cos(theta),
+		}
+	}
 
 	kdEntities.Remove(vector.V{users[uId].Y, users[uId].X}, func(q *P) bool { return uId.String() == q.tag })
 	delete(users, uId)
@@ -153,11 +180,13 @@ func processCollide(s *streamer, t *user, u *user) {
 	if u.Mass < 1 {
 		u.Mass = 1
 	}
+	var uName = u.Name
+	var uId = u.Id
 	if u.Strength <= 0 {
-		processDead(s, u.Id, t.Id, fmt.Sprintf("%v was hit by %v", u.Name, users[t.Id].Name))
+		processDead(s, u.Id, t.Id, fmt.Sprintf("%v was hit by %v", u.Name, t.Name), false)
 	}
 	if t.Strength <= 0 {
-		processDead(s, t.Id, u.Id, fmt.Sprintf("%v was hit by %v", t.Name, users[u.Id].Name))
+		processDead(s, t.Id, uId, fmt.Sprintf("%v was hit by %v", t.Name, uName), false)
 	}
 }
 
@@ -441,7 +470,7 @@ func gameLoop(s *streamer) {
 						u.Mass += other.Mass * BULLET_K
 
 						if u.Strength <= 0 {
-							processDead(s, u.Id, other.Id, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name))
+							processDead(s, u.Id, other.Id, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name), false)
 						}
 
 						delete(bullets, id)
