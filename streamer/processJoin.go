@@ -39,6 +39,8 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 		Name:             name,
 		Mass:             MASS_INIT,
 		Strength:         STRENGTH_INIT,
+		Enemy:            uuid.Nil,
+		CombatFrame:      0,
 		Damage:           0,
 		Y:                y,
 		X:                x,
