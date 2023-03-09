@@ -4,6 +4,7 @@ import "github.com/gofrs/uuid"
 
 type user struct {
 	Id               uuid.UUID  `json:"id"`
+	Dummy            bool       `json:"dummy"`
 	Name             string     `json:"name"`
 	Mass             float64    `json:"mass"`
 	Strength         float64    `json:"strength"`
@@ -29,6 +30,7 @@ var users map[uuid.UUID]*user = make(map[uuid.UUID]*user)
 
 type userReduced struct {
 	Id               uuid.UUID `json:"id"`
+	Dummy            bool      `json:"dummy"`
 	Name             string    `json:"name"`
 	Mass             float64   `json:"mass"`
 	Strength         int       `json:"strength"`
