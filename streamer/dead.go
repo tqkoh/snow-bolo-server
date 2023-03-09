@@ -12,6 +12,7 @@ import (
 )
 
 type deadArgs struct {
+	Kills int `json:"kills"`
 }
 type dead struct {
 	Method string   `json:"method"`
@@ -40,6 +41,11 @@ func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnec
 		return
 	}
 
+	enemy, ok := users[by]
+	if ok {
+		enemy.Kills += 1
+	}
+
 	var m = BroadcastMessage{
 		Method: "message",
 		Args: MessageArgs{
@@ -55,7 +61,9 @@ func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnec
 	if !disconnected {
 		var m2 = dead{
 			Method: "dead",
-			Args:   deadArgs{},
+			Args: deadArgs{
+				Kills: u.Kills,
+			},
 		}
 		resJSON2, err := json.Marshal(m2)
 		if err != nil {

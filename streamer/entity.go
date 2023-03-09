@@ -10,6 +10,7 @@ type user struct {
 	Damage           int        `json:"damage"`
 	Enemy            uuid.UUID  `json:"enemy"`
 	CombatFrame      int        `json:"combatFrame"`
+	Kills            int        `json:"kills"`
 	Y                float64    `json:"y"`
 	X                float64    `json:"x"`
 	Vy               float64    `json:"vy"`
