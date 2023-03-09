@@ -494,7 +494,7 @@ func gameLoop(s *streamer) {
 				fmt.Printf("args: %v", args)
 				fmt.Printf("json.Marshal error: %v", err)
 			}
-			s.send(updateJSON, func(c *client) bool { return true })
+			s.send(updateJSON, func(c *client) bool { return c.active })
 		}
 
 		// wait for next frame
