@@ -124,9 +124,11 @@ func processCollide(s *streamer, t *user, u *user) {
 	var uName = u.Name
 	var uId = u.Id
 	if u.Strength <= 0 {
+		addDamageDummyUser(int(m/(m+M)*imt*STRENGTH_COLLISION_K), u.Y, u.X)
 		processDead(s, u.Id, t.Id, fmt.Sprintf("%v was hit by %v", u.Name, t.Name), false)
 	}
 	if t.Strength <= 0 {
+		addDamageDummyUser(int(M/(m+M)*imt*STRENGTH_COLLISION_K), t.Y, t.X)
 		processDead(s, t.Id, uId, fmt.Sprintf("%v was hit by %v", t.Name, uName), false)
 	}
 }
@@ -146,155 +148,158 @@ func gameLoop(s *streamer) {
 
 		// process users' input and update state
 		for _, u := range users {
-			// process input
-			var input Input
-			for len(u.Input) > 5 {
-				<-u.Input
-			}
-			if len(u.Input) == 0 {
-				input = u.PrevInput
-			} else {
-				input = <-u.Input
-			}
-			if u.InOperable > 0 {
-				u.InOperable -= 1
-				// input.W = false
-				// input.A = false
-				// input.S = false
-				// input.D = false
-				// input.Left = false
-				// input.Right = false
-			} else {
-				// update velocity
-				var vLimit = V_MIN
-				if u.Mass < V_ATTACK {
-					vLimit += (V_ATTACK - u.Mass) / V_ATTACK * (V_MAX - V_MIN)
+			if !u.Dummy {
+				// process input
+				var input Input
+				for len(u.Input) > 5 {
+					<-u.Input
 				}
-
-				if input.W == input.S {
-					u.Vy += -u.Vy * V_K
-				} else if input.W {
-					u.Vy += (-u.Vy/vLimit - 1) * vLimit * V_K
+				if len(u.Input) == 0 {
+					input = u.PrevInput
 				} else {
-					u.Vy += (1 - u.Vy/vLimit) * vLimit * V_K
+					input = <-u.Input
 				}
-				if input.A == input.D {
-					u.Vx += -u.Vx * V_K
-				} else if input.A {
-					u.Vx += (-u.Vx/vLimit - 1) * vLimit * V_K
+				if u.InOperable > 0 {
+					u.InOperable -= 1
+					// input.W = false
+					// input.A = false
+					// input.S = false
+					// input.D = false
+					// input.Left = false
+					// input.Right = false
 				} else {
-					u.Vx += (1 - u.Vx/vLimit) * vLimit * V_K
-				}
+					// update velocity
+					var vLimit = V_MIN
+					if u.Mass < V_ATTACK {
+						vLimit += (V_ATTACK - u.Mass) / V_ATTACK * (V_MAX - V_MIN)
+					}
 
-				if u.RightClickLength > 0 {
-
-					u.Vy *= PRESS_V_K
-					u.Vx *= PRESS_V_K
-					u.Strength = float64(u.Strength + PRESS_RECOVER)
-					u.Damage = -1
-					if u.Strength > 100 {
-						u.Strength = 100
+					if input.W == input.S {
+						u.Vy += -u.Vy * V_K
+					} else if input.W {
+						u.Vy += (-u.Vy/vLimit - 1) * vLimit * V_K
 					} else {
-						u.Mass *= PRESS_REDUCE
-						u.Mass -= PRESS_REDUCE_C
+						u.Vy += (1 - u.Vy/vLimit) * vLimit * V_K
+					}
+					if input.A == input.D {
+						u.Vx += -u.Vx * V_K
+					} else if input.A {
+						u.Vx += (-u.Vx/vLimit - 1) * vLimit * V_K
+					} else {
+						u.Vx += (1 - u.Vx/vLimit) * vLimit * V_K
+					}
+
+					if u.RightClickLength > 0 {
+
+						u.Vy *= PRESS_V_K
+						u.Vx *= PRESS_V_K
+						u.Strength = float64(u.Strength + PRESS_RECOVER)
+						u.Damage = -1
+						if u.Strength > 100 {
+							u.Strength = 100
+						} else {
+							u.Mass *= PRESS_REDUCE
+							u.Mass -= PRESS_REDUCE_C
+							if u.Mass < 1 {
+								u.Mass = 1
+							}
+						}
+					}
+				}
+
+				// update position
+				if u.HitStop > 0 {
+					u.HitStop -= 1
+					u.Y += float64(rand.Intn(3) - 1)
+					u.X += float64(rand.Intn(3) - 1)
+				} else {
+					u.Y += u.Vy
+					u.X += u.Vx
+				}
+				var radius = radiusFromMass(u.Mass)
+				if u.Y < MAP_MARGIN+radius {
+					u.Y = MAP_MARGIN + radius
+					u.Vy = 0
+				}
+				if u.Y >= MAP_HEIGHT-MAP_MARGIN-radius {
+					u.Y = MAP_HEIGHT - MAP_MARGIN - radius
+					u.Vy = 0
+				}
+				if u.X < MAP_MARGIN+radius {
+					u.X = MAP_MARGIN + radius
+					u.Vx = 0
+				}
+				if u.X >= MAP_HEIGHT-MAP_MARGIN-radius {
+					u.X = MAP_HEIGHT - MAP_MARGIN - radius
+					u.Vx = 0
+				}
+
+				if u.Mass < 1 {
+					u.Mass = 1
+				}
+				u.Mass += math.Sqrt(u.Vy*u.Vy+u.Vx*u.Vx) * math.Sqrt(u.Mass) * MASS_K
+
+				u.Dy = input.Dy
+				u.Dx = input.Dx
+
+				// update previnput
+				u.PrevInput = input
+
+				// update leftClickLength
+				if input.Left {
+					if u.LeftClickLength < 150 {
+						u.LeftClickLength++
+					}
+				} else {
+					if u.LeftClickLength > 0 {
+						var id = uuid.Must(uuid.NewV4())
+						var l = math.Sqrt(float64(u.Dy*u.Dy + u.Dx*u.Dx))
+						if l == 0 {
+							l = math.Nextafter(0, 1)
+						}
+						var t = (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy)) / (l * l)
+						var Hx = float64(u.Dx) * t
+						var Hy = float64(u.Dy) * t
+						var mass = u.Mass * float64(u.LeftClickLength) / 150 * MAX_BULLET_MASS
+
+						var radiusAfter = radiusFromMass(u.Mass - mass)
+						bullets[id] = &bullet{
+							Id:    id,
+							Owner: u.Id,
+							Mass:  mass,
+							Life:  BULLET_LIFE,
+							Y:     u.Y + radiusAfter*float64(u.Dy)/l,
+							X:     u.X + radiusAfter*float64(u.Dx)/l,
+							Vy:    Hy + BULLET_V*float64(u.Dy)/l,
+							Vx:    Hx + BULLET_V*float64(u.Dx)/l,
+						}
+
+						u.Mass -= mass * BULLET_NEED
 						if u.Mass < 1 {
 							u.Mass = 1
 						}
 					}
+					u.LeftClickLength = 0
 				}
-			}
 
-			// update position
-			if u.HitStop > 0 {
-				u.HitStop -= 1
-				u.Y += float64(rand.Intn(3) - 1)
-				u.X += float64(rand.Intn(3) - 1)
-			} else {
-				u.Y += u.Vy
-				u.X += u.Vx
-			}
-			var radius = radiusFromMass(u.Mass)
-			if u.Y < MAP_MARGIN+radius {
-				u.Y = MAP_MARGIN + radius
-				u.Vy = 0
-			}
-			if u.Y >= MAP_HEIGHT-MAP_MARGIN-radius {
-				u.Y = MAP_HEIGHT - MAP_MARGIN - radius
-				u.Vy = 0
-			}
-			if u.X < MAP_MARGIN+radius {
-				u.X = MAP_MARGIN + radius
-				u.Vx = 0
-			}
-			if u.X >= MAP_HEIGHT-MAP_MARGIN-radius {
-				u.X = MAP_HEIGHT - MAP_MARGIN - radius
-				u.Vx = 0
-			}
-
-			if u.Mass < 1 {
-				u.Mass = 1
-			}
-			u.Mass += math.Sqrt(u.Vy*u.Vy+u.Vx*u.Vx) * math.Sqrt(u.Mass) * MASS_K
-
-			u.Dy = input.Dy
-			u.Dx = input.Dx
-
-			// update previnput
-			u.PrevInput = input
-
-			// update leftClickLength
-			if input.Left {
-				if u.LeftClickLength < 60 {
-					u.LeftClickLength++
+				// update rightClickLength
+				if input.Right {
+					u.RightClickLength++
+				} else {
+					u.RightClickLength = 0
 				}
-			} else {
-				if u.LeftClickLength > 0 {
-					var id = uuid.Must(uuid.NewV4())
-					var l = math.Sqrt(float64(u.Dy*u.Dy + u.Dx*u.Dx))
-					if l == 0 {
-						l = math.Nextafter(0, 1)
-					}
-					var t = (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy)) / (l * l)
-					var Hx = float64(u.Dx) * t
-					var Hy = float64(u.Dy) * t
-					var mass = u.Mass * float64(u.LeftClickLength) / 60 * MAX_BULLET_MASS
 
-					var radiusAfter = radiusFromMass(u.Mass - mass)
-					bullets[id] = &bullet{
-						Id:    id,
-						Owner: u.Id,
-						Mass:  mass,
-						Life:  BULLET_LIFE,
-						Y:     u.Y + radiusAfter*float64(u.Dy)/l,
-						X:     u.X + radiusAfter*float64(u.Dx)/l,
-						Vy:    Hy + BULLET_V*float64(u.Dy)/l,
-						Vx:    Hx + BULLET_V*float64(u.Dx)/l,
-					}
-
-					u.Mass -= mass * BULLET_NEED
-					if u.Mass < 1 {
-						u.Mass = 1
-					}
+				u.CombatFrame -= 1
+				if u.CombatFrame <= 0 {
+					u.Enemy = uuid.Nil
 				}
-				u.LeftClickLength = 0
+
+				kdEntities.Insert(&P{
+					p:   vector.V{u.Y, u.X},
+					tag: u.Id.String() + "U",
+				})
 			}
 
-			// update rightClickLength
-			if input.Right {
-				u.RightClickLength++
-			} else {
-				u.RightClickLength = 0
-			}
-
-			u.CombatFrame -= 1
-			if u.CombatFrame <= 0 {
-				u.Enemy = uuid.Nil
-			}
-
-			kdEntities.Insert(&P{
-				p:   vector.V{u.Y, u.X},
-				tag: u.Id.String() + "U",
-			})
 		}
 
 		// update bullets' state
@@ -420,6 +425,7 @@ func gameLoop(s *streamer) {
 						u.CombatFrame = COMBAT_FRAME
 
 						if u.Strength <= 0 {
+							addDamageDummyUser(int(M/(m+M)*im*STRENGTH_HIT_K), u.Y, u.X)
 							processDead(s, u.Id, other.Owner, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name), false)
 						}
 
@@ -452,6 +458,7 @@ func gameLoop(s *streamer) {
 			for _, user := range users {
 				u = append(u, userReduced{
 					Id:               user.Id,
+					Dummy:            user.Dummy,
 					Name:             user.Name,
 					Mass:             user.Mass,
 					Strength:         int(math.Min(user.Strength+1, 100)),
@@ -469,6 +476,9 @@ func gameLoop(s *streamer) {
 				})
 
 				user.Damage = 0
+				if user.Dummy {
+					delete(users, user.Id)
+				}
 			}
 			sort.Slice(u, func(i, j int) bool { return u[i].Mass > u[j].Mass })
 

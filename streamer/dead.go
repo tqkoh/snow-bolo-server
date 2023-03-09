@@ -102,3 +102,15 @@ func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnec
 	kdEntities.Remove(vector.V{u.Y, u.X}, func(q *P) bool { return uId.String() == q.tag })
 	utils.Del(users, uId)
 }
+
+func addDamageDummyUser(damage int, y, x float64) {
+	id := uuid.Must(uuid.NewV4())
+	users[id] = &user{
+		Id:     id,
+		Dummy:  true,
+		Name:   "damageDummy",
+		Damage: damage,
+		Y:      y,
+		X:      x,
+	}
+}
