@@ -247,7 +247,7 @@ func gameLoop(s *streamer) {
 
 				// update leftClickLength
 				if input.Left {
-					if u.LeftClickLength < 60 {
+					if u.LeftClickLength < 150 {
 						u.LeftClickLength++
 					}
 				} else {
@@ -260,7 +260,7 @@ func gameLoop(s *streamer) {
 						var t = (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy)) / (l * l)
 						var Hx = float64(u.Dx) * t
 						var Hy = float64(u.Dy) * t
-						var mass = u.Mass * float64(u.LeftClickLength) / 60 * MAX_BULLET_MASS
+						var mass = u.Mass * float64(u.LeftClickLength) / 150 * MAX_BULLET_MASS
 
 						var radiusAfter = radiusFromMass(u.Mass - mass)
 						bullets[id] = &bullet{
