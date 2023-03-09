@@ -1,7 +1,6 @@
 package streamer
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -35,12 +34,7 @@ func (s *streamer) ConnectWS(c echo.Context) error {
 
 	<-client.closer
 
-	u, ok := users[client.id]
-	name := "unknown"
-	if ok {
-		name = u.Name
-	}
-	processDead(s, client.id, client.id, fmt.Sprintf("%v disconnected", name), true)
+	processDeadDisconnected(s, client.id)
 	utils.Del(s.clients, client.id)
 
 	return c.NoContent(http.StatusOK)

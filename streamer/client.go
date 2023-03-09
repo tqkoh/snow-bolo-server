@@ -16,6 +16,7 @@ type client struct {
 	receiver chan receiveData
 	sender   chan []byte
 	closer   chan bool
+	active   bool
 }
 
 func newClient(roomID string, conn *websocket.Conn, receiver chan receiveData) *client {
@@ -25,6 +26,7 @@ func newClient(roomID string, conn *websocket.Conn, receiver chan receiveData) *
 		receiver: receiver,
 		sender:   make(chan []byte),
 		closer:   make(chan bool),
+		active:   true,
 	}
 }
 func (c *client) listen() {

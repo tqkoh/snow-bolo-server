@@ -25,13 +25,6 @@ type update struct {
 	Args   updateArgs `json:"args"`
 }
 
-type deadArgs struct {
-}
-type dead struct {
-	Method string   `json:"method"`
-	Args   deadArgs `json:"args"`
-}
-
 // kd
 var _ point.P = &P{}
 
@@ -43,67 +36,6 @@ type P struct {
 func (p *P) P() vector.V { return p.p }
 
 var kdEntities *kd.KD[*P]
-
-func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnected bool) {
-	u, ok := users[uId]
-	if !ok {
-		return
-	}
-
-	var m = BroadcastMessage{
-		Method: "message",
-		Args: MessageArgs{
-			Message: log,
-		},
-	}
-	resJSON, err := json.Marshal(m)
-	if err != nil {
-		panic(err)
-	}
-	s.send(resJSON, func(_ *client) bool { return true })
-
-	if !disconnected {
-		var m2 = dead{
-			Method: "dead",
-			Args:   deadArgs{},
-		}
-		resJSON2, err := json.Marshal(m2)
-		if err != nil {
-			panic(err)
-		}
-		if err = s.sendTo(uId, resJSON2); err != nil {
-			fmt.Println("sendTo error: ", err)
-		}
-	}
-
-	// destroy
-	{
-		var id = uuid.Must(uuid.NewV4())
-		feeds[id] = &feed{
-			Id:   id,
-			Mass: u.Mass * DEAD_MASS_CENTER,
-			Y:    u.Y,
-			X:    u.X,
-			Vy:   u.Vy,
-			Vx:   u.Vx,
-		}
-	}
-	for i := 0; i < DEAD_MASS_MINI_NUM; i++ {
-		var id = uuid.Must(uuid.NewV4())
-		var theta = rand.Float64() * 2 * math.Pi
-		var r = radiusFromMass(u.Mass * DEAD_MASS_CENTER)
-		feeds[id] = &feed{
-			Id:   id,
-			Mass: u.Mass * DEAD_MASS_MINI,
-			Y:    u.Y + r*math.Sin(theta),
-			X:    u.X + r*math.Cos(theta),
-			Vy:   u.Vy + DEAD_MASS_MINI_V*math.Sin(theta),
-			Vx:   u.Vx + DEAD_MASS_MINI_V*math.Cos(theta),
-		}
-	}
-	kdEntities.Remove(vector.V{u.Y, u.X}, func(q *P) bool { return uId.String() == q.tag })
-	utils.Del(users, uId)
-}
 
 func radiusFromMass(mass float64) float64 {
 	var r6 = math.Sqrt(6)
@@ -172,6 +104,10 @@ func processCollide(s *streamer, t *user, u *user) {
 	u.HitStop = HITSTOP
 	t.InOperable = int(M / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
 	u.InOperable = int(m / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
+	t.CombatFrame = COMBAT_FRAME
+	u.CombatFrame = COMBAT_FRAME
+	t.Enemy = u.Id
+	u.Enemy = t.Id
 
 	t.Damage += int(M / (m + M) * imt * STRENGTH_COLLISION_K)
 	u.Damage += int(m / (m + M) * imt * STRENGTH_COLLISION_K)
@@ -350,6 +286,11 @@ func gameLoop(s *streamer) {
 				u.RightClickLength = 0
 			}
 
+			u.CombatFrame -= 1
+			if u.CombatFrame <= 0 {
+				u.Enemy = uuid.Nil
+			}
+
 			kdEntities.Insert(&P{
 				p:   vector.V{u.Y, u.X},
 				tag: u.Id.String() + "U",
@@ -374,20 +315,21 @@ func gameLoop(s *streamer) {
 
 			b.Y += b.Vy
 			b.X += b.Vx
-			if b.Y < MAP_MARGIN {
-				b.Y = MAP_MARGIN
+			var radius = radiusFromMass(b.Mass)
+			if b.Y < MAP_MARGIN+radius {
+				b.Y = MAP_MARGIN + radius
 				b.Vy = 0
 			}
-			if b.Y >= MAP_HEIGHT-MAP_MARGIN {
-				b.Y = MAP_HEIGHT - MAP_MARGIN
+			if b.Y >= MAP_HEIGHT-MAP_MARGIN-radius {
+				b.Y = MAP_HEIGHT - MAP_MARGIN - radius
 				b.Vy = 0
 			}
-			if b.X < MAP_MARGIN {
-				b.X = MAP_MARGIN
+			if b.X < MAP_MARGIN+radius {
+				b.X = MAP_MARGIN + radius
 				b.Vx = 0
 			}
-			if b.X >= MAP_HEIGHT-MAP_MARGIN {
-				b.X = MAP_HEIGHT - MAP_MARGIN
+			if b.X >= MAP_HEIGHT-MAP_MARGIN-radius {
+				b.X = MAP_HEIGHT - MAP_MARGIN - radius
 				b.Vx = 0
 			}
 			kdEntities.Insert(&P{
@@ -404,20 +346,21 @@ func gameLoop(s *streamer) {
 			f.Y += f.Vy
 			f.X += f.Vx
 
-			if f.Y < MAP_MARGIN {
-				f.Y = MAP_MARGIN
+			radius := radiusFromMass(f.Mass)
+			if f.Y < MAP_MARGIN-radius {
+				f.Y = MAP_MARGIN - radius
 				f.Vy = 0
 			}
-			if f.Y >= MAP_HEIGHT-MAP_MARGIN {
-				f.Y = MAP_HEIGHT - MAP_MARGIN
+			if f.Y >= MAP_HEIGHT-MAP_MARGIN+radius {
+				f.Y = MAP_HEIGHT - MAP_MARGIN + radius
 				f.Vy = 0
 			}
-			if f.X < MAP_MARGIN {
-				f.X = MAP_MARGIN
+			if f.X < MAP_MARGIN-radius {
+				f.X = MAP_MARGIN - radius
 				f.Vx = 0
 			}
-			if f.X >= MAP_HEIGHT-MAP_MARGIN {
-				f.X = MAP_HEIGHT - MAP_MARGIN
+			if f.X >= MAP_HEIGHT-MAP_MARGIN+radius {
+				f.X = MAP_HEIGHT - MAP_MARGIN + radius
 				f.Vx = 0
 			}
 
@@ -473,6 +416,8 @@ func gameLoop(s *streamer) {
 						u.Damage += int(M / (m + M) * im * STRENGTH_HIT_K)
 						u.Strength -= M / (m + M) * im * STRENGTH_HIT_K
 						u.Mass += other.Mass * BULLET_K
+						u.Enemy = other.Owner
+						u.CombatFrame = COMBAT_FRAME
 
 						if u.Strength <= 0 {
 							processDead(s, u.Id, other.Id, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name), false)
@@ -549,7 +494,7 @@ func gameLoop(s *streamer) {
 				fmt.Printf("args: %v", args)
 				fmt.Printf("json.Marshal error: %v", err)
 			}
-			s.send(updateJSON, func(c *client) bool { return true })
+			s.send(updateJSON, func(c *client) bool { return c.active })
 		}
 
 		// wait for next frame

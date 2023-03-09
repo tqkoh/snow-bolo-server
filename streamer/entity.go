@@ -8,6 +8,8 @@ type user struct {
 	Mass             float64    `json:"mass"`
 	Strength         float64    `json:"strength"`
 	Damage           int        `json:"damage"`
+	Enemy            uuid.UUID  `json:"enemy"`
+	CombatFrame      int        `json:"combatFrame"`
 	Y                float64    `json:"y"`
 	X                float64    `json:"x"`
 	Vy               float64    `json:"vy"`

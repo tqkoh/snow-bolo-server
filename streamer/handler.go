@@ -26,6 +26,8 @@ func (s *streamer) handlerWebSocket(data receiveData) error {
 	case "input":
 		// fmt.Printf("input received\n")
 		processInput(s, data.id, req.Args)
+	case "active":
+		processActive(s, data.id, req.Args)
 	default:
 		fmt.Printf("invalid method")
 	}
