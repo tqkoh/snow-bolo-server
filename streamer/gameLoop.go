@@ -420,7 +420,7 @@ func gameLoop(s *streamer) {
 						u.CombatFrame = COMBAT_FRAME
 
 						if u.Strength <= 0 {
-							processDead(s, u.Id, other.Id, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name), false)
+							processDead(s, u.Id, other.Owner, fmt.Sprintf("%v was shot by %v", u.Name, users[other.Owner].Name), false)
 						}
 
 						utils.Del(bullets, id)
