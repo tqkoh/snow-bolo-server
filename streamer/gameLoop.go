@@ -100,10 +100,10 @@ func processCollide(s *streamer, t *user, u *user) {
 	// update hitstop and inoperable frames
 	var imt = math.Abs(m*v0ty - m*v1ty)
 	// var imu = math.Abs(M*v0uy - M*v1uy) // equal to imt
+	t.InOperable = INOPERABLE // int(M / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
+	u.InOperable = INOPERABLE // int(m / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
 	t.HitStop = HITSTOP
 	u.HitStop = HITSTOP
-	t.InOperable = int(M / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
-	u.InOperable = int(m / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
 	t.CombatFrame = COMBAT_FRAME
 	u.CombatFrame = COMBAT_FRAME
 	t.Enemy = u.Id
@@ -206,12 +206,15 @@ func gameLoop(s *streamer) {
 						}
 					}
 				}
+				u.Strength = math.Min(100, u.Strength+STRENGTH_HEAL)
 
 				// update position
 				if u.HitStop > 0 {
 					u.HitStop -= 1
-					u.Y += float64(rand.Intn(3) - 1)
-					u.X += float64(rand.Intn(3) - 1)
+					if u.HitStop%3 == 0 {
+						u.Y += float64(rand.Intn(3) - 1)
+						u.X += float64(rand.Intn(3) - 1)
+					}
 				} else {
 					u.Y += u.Vy
 					u.X += u.Vx
@@ -393,7 +396,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.HitStop <= 0 && other.HitStop <= 0 {
+					if !u.Dummy && !other.Dummy && l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.HitStop <= 0 && other.HitStop <= 0 {
 						// collision
 						processCollide(s, u, other)
 					}
@@ -406,7 +409,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Owner {
+					if !u.Dummy && l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Owner {
 						// collision
 						var m = u.Mass
 						var M = other.Mass
@@ -417,6 +420,7 @@ func gameLoop(s *streamer) {
 						var imy = math.Abs(m*v0y - m*u.Vy)
 						var imx = math.Abs(m*v0x - m*u.Vx)
 						var im = math.Sqrt(imy*imy + imx*imx)
+						u.HitStop = HITSTOP
 						u.InOperable = INOPERABLE // int(M / (M + m) * math.Max(0, math.Log(im)) * INOPERABLE_K)
 						u.Damage += int(M / (m + M) * im * STRENGTH_HIT_K)
 						u.Strength -= M / (m + M) * im * STRENGTH_HIT_K
@@ -441,7 +445,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
+					if !u.Dummy && l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
 						// collision
 						u.Mass += other.Mass
 						utils.Del(feeds, id)
