@@ -1,23 +1,24 @@
-package streamer
+package game
 
 import (
 	"fmt"
 
 	"github.com/gofrs/uuid"
+	"github.com/tqkoh/snowball-server/streamer"
 )
 
-func processActive(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
+func processActive(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	active, ok := args["active"].(bool)
 	if !ok {
 		return fmt.Errorf("invalid type for active\n")
 	}
 
-	c, ok := s.clients[clientId]
+	c, ok := s.Clients[clientId]
 	if !ok {
 		println("client not found")
 		return nil
 	}
-	c.active = active
+	c.Active = active
 
 	return nil
 }

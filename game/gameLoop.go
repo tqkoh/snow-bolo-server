@@ -1,4 +1,4 @@
-package streamer
+package game
 
 import (
 	"encoding/json"
@@ -12,7 +12,8 @@ import (
 	"github.com/downflux/go-kd/kd"
 	"github.com/downflux/go-kd/point"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer/utils"
+	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snowball-server/utils"
 )
 
 type updateArgs struct {
@@ -46,7 +47,7 @@ func radiusFromMass(mass float64) float64 {
 	return math.Pow(mass, 1./3.)
 }
 
-func processCollide(s *streamer, t *user, u *user) {
+func processCollide(s *streamer.Streamer, t *user, u *user) {
 	// check if t and u are approaching each other
 	var dy = t.Y - u.Y
 	var dx = t.X - u.X
@@ -91,19 +92,19 @@ func processCollide(s *streamer, t *user, u *user) {
 	u.Vx = v1uy*math.Sin(-theta) + v1ux*math.Cos(-theta)
 
 	// update position to avoid double collision
-	// var dd = radiusFromMass(m) + radiusFromMass(M) - dl + 1
-	// t.Y = t.Y + dd*(m/(m+M))*dy/dl
-	// t.X = t.X + dd*(m/(m+M))*dx/dl
-	// u.Y = u.Y + dd*(-M/(m+M))*dy/dl
-	// u.X = u.X + dd*(-M/(m+M))*dx/dl
+	var dd = radiusFromMass(m) + radiusFromMass(M) - dl + 1
+	t.Y = t.Y + dd*(m/(m+M))*dy/dl
+	t.X = t.X + dd*(m/(m+M))*dx/dl
+	u.Y = u.Y + dd*(-M/(m+M))*dy/dl
+	u.X = u.X + dd*(-M/(m+M))*dx/dl
 
 	// update hitstop and inoperable frames
 	var imt = math.Abs(m*v0ty - m*v1ty)
 	// var imu = math.Abs(M*v0uy - M*v1uy) // equal to imt
+	t.InOperable = INOPERABLE // int(M / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
+	u.InOperable = INOPERABLE // int(m / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
 	t.HitStop = HITSTOP
 	u.HitStop = HITSTOP
-	t.InOperable = int(M / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
-	u.InOperable = int(m / (M + m) * math.Max(0, math.Log(imt)) * INOPERABLE_K)
 	t.CombatFrame = COMBAT_FRAME
 	u.CombatFrame = COMBAT_FRAME
 	t.Enemy = u.Id
@@ -133,7 +134,7 @@ func processCollide(s *streamer, t *user, u *user) {
 	}
 }
 
-func gameLoop(s *streamer) {
+func GameLoop(s *streamer.Streamer) {
 	var frame int = 0
 	var prev = time.Now()
 
@@ -206,12 +207,15 @@ func gameLoop(s *streamer) {
 						}
 					}
 				}
+				u.Strength = math.Min(100, u.Strength+STRENGTH_HEAL)
 
 				// update position
 				if u.HitStop > 0 {
 					u.HitStop -= 1
-					u.Y += float64(rand.Intn(3) - 1)
-					u.X += float64(rand.Intn(3) - 1)
+					if u.HitStop%3 == 0 {
+						u.Y += float64(rand.Intn(3) - 1)
+						u.X += float64(rand.Intn(3) - 1)
+					}
 				} else {
 					u.Y += u.Vy
 					u.X += u.Vx
@@ -247,10 +251,13 @@ func gameLoop(s *streamer) {
 
 				// update leftClickLength
 				if input.Left {
-					if u.LeftClickLength < 150 {
+					if u.LeftClickCancelled {
+						u.LeftClickLength = 0
+					} else if u.LeftClickLength < 150 {
 						u.LeftClickLength++
 					}
 				} else {
+					u.LeftClickCancelled = false
 					if u.LeftClickLength > 0 {
 						var id = uuid.Must(uuid.NewV4())
 						var l = math.Sqrt(float64(u.Dy*u.Dy + u.Dx*u.Dx))
@@ -284,6 +291,7 @@ func gameLoop(s *streamer) {
 
 				// update rightClickLength
 				if input.Right {
+					u.LeftClickCancelled = true
 					u.RightClickLength++
 				} else {
 					u.RightClickLength = 0
@@ -352,20 +360,20 @@ func gameLoop(s *streamer) {
 			f.X += f.Vx
 
 			radius := radiusFromMass(f.Mass)
-			if f.Y < MAP_MARGIN-radius {
-				f.Y = MAP_MARGIN - radius
+			if f.Y < MAP_MARGIN+radius {
+				f.Y = MAP_MARGIN + radius
 				f.Vy = 0
 			}
-			if f.Y >= MAP_HEIGHT-MAP_MARGIN+radius {
-				f.Y = MAP_HEIGHT - MAP_MARGIN + radius
+			if f.Y >= MAP_HEIGHT-MAP_MARGIN-radius {
+				f.Y = MAP_HEIGHT - MAP_MARGIN - radius
 				f.Vy = 0
 			}
-			if f.X < MAP_MARGIN-radius {
-				f.X = MAP_MARGIN - radius
+			if f.X < MAP_MARGIN+radius {
+				f.X = MAP_MARGIN + radius
 				f.Vx = 0
 			}
-			if f.X >= MAP_HEIGHT-MAP_MARGIN+radius {
-				f.X = MAP_HEIGHT - MAP_MARGIN + radius
+			if f.X >= MAP_HEIGHT-MAP_MARGIN-radius {
+				f.X = MAP_HEIGHT - MAP_MARGIN - radius
 				f.Vx = 0
 			}
 
@@ -393,7 +401,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.HitStop <= 0 && other.HitStop <= 0 {
+					if !u.Dummy && !other.Dummy && l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Id && u.HitStop <= 0 && other.HitStop <= 0 {
 						// collision
 						processCollide(s, u, other)
 					}
@@ -406,7 +414,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Owner {
+					if !u.Dummy && l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) && u.Id != other.Owner {
 						// collision
 						var m = u.Mass
 						var M = other.Mass
@@ -417,6 +425,7 @@ func gameLoop(s *streamer) {
 						var imy = math.Abs(m*v0y - m*u.Vy)
 						var imx = math.Abs(m*v0x - m*u.Vx)
 						var im = math.Sqrt(imy*imy + imx*imx)
+						u.HitStop = HITSTOP
 						u.InOperable = INOPERABLE // int(M / (M + m) * math.Max(0, math.Log(im)) * INOPERABLE_K)
 						u.Damage += int(M / (m + M) * im * STRENGTH_HIT_K)
 						u.Strength -= M / (m + M) * im * STRENGTH_HIT_K
@@ -441,7 +450,7 @@ func gameLoop(s *streamer) {
 					var dy = u.Y - other.Y
 					var dx = u.X - other.X
 					var l = math.Sqrt(dy*dy + dx*dx)
-					if l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
+					if !u.Dummy && l <= radiusFromMass(u.Mass)+radiusFromMass(other.Mass) {
 						// collision
 						u.Mass += other.Mass
 						utils.Del(feeds, id)
@@ -457,22 +466,23 @@ func gameLoop(s *streamer) {
 			var u []userReduced = make([]userReduced, 0)
 			for _, user := range users {
 				u = append(u, userReduced{
-					Id:               user.Id,
-					Dummy:            user.Dummy,
-					Name:             user.Name,
-					Mass:             user.Mass,
-					Strength:         int(math.Min(user.Strength+1, 100)),
-					Damage:           user.Damage,
-					Y:                user.Y,
-					X:                user.X,
-					Vy:               user.Vy,
-					Vx:               user.Vx,
-					Dy:               user.Dy,
-					Dx:               user.Dx,
-					HitStop:          user.HitStop,
-					InOperable:       user.InOperable,
-					LeftClickLength:  user.LeftClickLength,
-					RightClickLength: user.RightClickLength,
+					Id:                 user.Id,
+					Dummy:              user.Dummy,
+					Name:               user.Name,
+					Mass:               user.Mass,
+					Strength:           int(math.Min(user.Strength+1, 100)),
+					Damage:             user.Damage,
+					Y:                  user.Y,
+					X:                  user.X,
+					Vy:                 user.Vy,
+					Vx:                 user.Vx,
+					Dy:                 user.Dy,
+					Dx:                 user.Dx,
+					HitStop:            user.HitStop,
+					InOperable:         user.InOperable,
+					LeftClickLength:    user.LeftClickLength,
+					RightClickLength:   user.RightClickLength,
+					LeftClickCancelled: user.LeftClickCancelled,
 				})
 
 				user.Damage = 0
@@ -504,7 +514,7 @@ func gameLoop(s *streamer) {
 				fmt.Printf("args: %v", args)
 				fmt.Printf("json.Marshal error: %v", err)
 			}
-			s.send(updateJSON, func(c *client) bool { return c.active })
+			s.Send(updateJSON, func(c *streamer.Client) bool { return c.Active })
 		}
 
 		// wait for next frame

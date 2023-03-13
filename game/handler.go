@@ -1,13 +1,15 @@
-package streamer
+package game
 
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/tqkoh/snowball-server/streamer"
 )
 
-func (s *streamer) handlerWebSocket(data receiveData) error {
-	var req payload
-	err := json.Unmarshal(data.payload, &req)
+func HandlerWebSocket(s *streamer.Streamer, data streamer.ReceiveData) error {
+	var req streamer.Payload
+	err := json.Unmarshal(data.Payload, &req)
 	if err != nil {
 		return err
 	}
@@ -19,15 +21,15 @@ func (s *streamer) handlerWebSocket(data receiveData) error {
 	switch req.Method {
 	case "message":
 		// fmt.Printf("message received\n")
-		processMessage(s, data.id, req.Args)
+		processMessage(s, data.Id, req.Args)
 	case "join":
 		// fmt.Printf("join received\n")
-		processJoin(s, data.id, req.Args)
+		processJoin(s, data.Id, req.Args)
 	case "input":
 		// fmt.Printf("input received\n")
-		processInput(s, data.id, req.Args)
+		processInput(s, data.Id, req.Args)
 	case "active":
-		processActive(s, data.id, req.Args)
+		processActive(s, data.Id, req.Args)
 	default:
 		fmt.Printf("invalid method")
 	}

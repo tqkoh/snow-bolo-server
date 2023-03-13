@@ -1,4 +1,4 @@
-package streamer
+package game
 
 import (
 	"encoding/json"
@@ -8,7 +8,8 @@ import (
 
 	"github.com/downflux/go-geometry/nd/vector"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer/utils"
+	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snowball-server/utils"
 )
 
 type deadArgs struct {
@@ -19,7 +20,7 @@ type dead struct {
 	Args   deadArgs `json:"args"`
 }
 
-func processDeadDisconnected(s *streamer, uId uuid.UUID) {
+func ProcessDeadDisconnected(s *streamer.Streamer, uId uuid.UUID) {
 	name := "unknown"
 	if u, ok := users[uId]; ok {
 		name = u.Name
@@ -35,7 +36,7 @@ func processDeadDisconnected(s *streamer, uId uuid.UUID) {
 	processDead(s, uId, uId, fmt.Sprintf("%v disconnected", name), true)
 }
 
-func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnected bool) {
+func processDead(s *streamer.Streamer, uId uuid.UUID, by uuid.UUID, log string, disconnected bool) {
 	u, ok := users[uId]
 	if !ok {
 		return
@@ -56,7 +57,7 @@ func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnec
 	if err != nil {
 		panic(err)
 	}
-	s.send(resJSON, func(_ *client) bool { return true })
+	s.Send(resJSON, func(_ *streamer.Client) bool { return true })
 
 	if !disconnected {
 		var m2 = dead{
@@ -69,7 +70,7 @@ func processDead(s *streamer, uId uuid.UUID, by uuid.UUID, log string, disconnec
 		if err != nil {
 			panic(err)
 		}
-		if err = s.sendTo(uId, resJSON2); err != nil {
+		if err = s.SendTo(uId, resJSON2); err != nil {
 			fmt.Println("sendTo error: ", err)
 		}
 	}

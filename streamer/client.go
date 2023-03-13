@@ -5,31 +5,31 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type receiveData struct {
-	id      uuid.UUID
-	payload []byte
+type ReceiveData struct {
+	Id      uuid.UUID
+	Payload []byte
 }
 
-type client struct {
-	id       uuid.UUID
+type Client struct {
+	Id       uuid.UUID
 	conn     *websocket.Conn
-	receiver chan receiveData
+	receiver chan ReceiveData
 	sender   chan []byte
 	closer   chan bool
-	active   bool
+	Active   bool
 }
 
-func newClient(roomID string, conn *websocket.Conn, receiver chan receiveData) *client {
-	return &client{
-		id:       uuid.Must(uuid.NewV4()),
+func newClient(roomID string, conn *websocket.Conn, receiver chan ReceiveData) *Client {
+	return &Client{
+		Id:       uuid.Must(uuid.NewV4()),
 		conn:     conn,
 		receiver: receiver,
 		sender:   make(chan []byte),
 		closer:   make(chan bool),
-		active:   true,
+		Active:   true,
 	}
 }
-func (c *client) listen() {
+func (c *Client) listen() {
 	for {
 		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -41,14 +41,14 @@ func (c *client) listen() {
 		}
 		// fmt.Printf("message: %s\n", message)
 
-		c.receiver <- receiveData{
-			id:      c.id,
-			payload: message,
+		c.receiver <- ReceiveData{
+			Id:      c.Id,
+			Payload: message,
 		}
 	}
 }
 
-func (c *client) send() {
+func (c *Client) send() {
 	for {
 		message, ok := <-c.sender
 
