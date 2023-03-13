@@ -1,4 +1,4 @@
-package streamer
+package game
 
 const SEND_STATE_PER = 2
 

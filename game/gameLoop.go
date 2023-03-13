@@ -1,4 +1,4 @@
-package streamer
+package game
 
 import (
 	"encoding/json"
@@ -12,7 +12,8 @@ import (
 	"github.com/downflux/go-kd/kd"
 	"github.com/downflux/go-kd/point"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer/utils"
+	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snowball-server/utils"
 )
 
 type updateArgs struct {
@@ -46,7 +47,7 @@ func radiusFromMass(mass float64) float64 {
 	return math.Pow(mass, 1./3.)
 }
 
-func processCollide(s *streamer, t *user, u *user) {
+func processCollide(s *streamer.Streamer, t *user, u *user) {
 	// check if t and u are approaching each other
 	var dy = t.Y - u.Y
 	var dx = t.X - u.X
@@ -133,7 +134,7 @@ func processCollide(s *streamer, t *user, u *user) {
 	}
 }
 
-func gameLoop(s *streamer) {
+func GameLoop(s *streamer.Streamer) {
 	var frame int = 0
 	var prev = time.Now()
 
@@ -513,7 +514,7 @@ func gameLoop(s *streamer) {
 				fmt.Printf("args: %v", args)
 				fmt.Printf("json.Marshal error: %v", err)
 			}
-			s.send(updateJSON, func(c *client) bool { return c.active })
+			s.Send(updateJSON, func(c *streamer.Client) bool { return c.Active })
 		}
 
 		// wait for next frame

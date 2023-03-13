@@ -1,10 +1,11 @@
-package streamer
+package game
 
 import (
 	"encoding/json"
 	"fmt"
 
 	"github.com/gofrs/uuid"
+	"github.com/tqkoh/snowball-server/streamer"
 )
 
 type MessageArgs struct {
@@ -16,7 +17,7 @@ type BroadcastMessage struct {
 	Args   MessageArgs `json:"args"`
 }
 
-func processMessage(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
+func processMessage(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	sendMessage, ok := args["message"].(string)
 	if !ok {
 		return fmt.Errorf("invalid type for message\n")
@@ -35,6 +36,6 @@ func processMessage(s *streamer, clientId uuid.UUID, args map[string]interface{}
 	}
 
 	// s.send([]byte(sendMessage), func(_ *client) bool { return true })
-	s.send(resJSON, func(_ *client) bool { return true })
+	s.Send(resJSON, func(_ *streamer.Client) bool { return true })
 	return nil
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"github.com/tqkoh/snowball-server/streamer/utils"
 )
 
 var upgrader = websocket.Upgrader{
@@ -14,7 +13,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (s *streamer) ConnectWS(c echo.Context) error {
+func (s *Streamer) ConnectWS(c echo.Context, whenClosed func(c *Client)) error {
 	roomID := c.QueryParam("room")
 	if roomID == "" {
 		roomID = "A"
@@ -28,14 +27,13 @@ func (s *streamer) ConnectWS(c echo.Context) error {
 
 	client := newClient(roomID, connection, s.receiver) // receiver is shared by streamer and all clients
 
-	s.clients[client.id] = client
+	s.Clients[client.Id] = client
 	go client.listen()
 	go client.send()
 
 	<-client.closer
 
-	processDeadDisconnected(s, client.id)
-	utils.Del(s.clients, client.id)
+	whenClosed(client)
 
 	return c.NoContent(http.StatusOK)
 }

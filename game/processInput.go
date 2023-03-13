@@ -1,8 +1,9 @@
-package streamer
+package game
 
 import (
 	"github.com/gofrs/uuid"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tqkoh/snowball-server/streamer"
 )
 
 type Input struct {
@@ -16,7 +17,7 @@ type Input struct {
 	Dy    int  `json:"dy"`
 }
 
-func processInput(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
+func processInput(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	var input Input
 	err := mapstructure.Decode(args, &input)
 	if err != nil {

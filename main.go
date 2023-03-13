@@ -6,7 +6,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/tqkoh/snowball-server/game"
 	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snowball-server/utils"
 )
 
 func main() {
@@ -32,10 +34,17 @@ func main() {
 		api.GET("/ping", func(c echo.Context) error {
 			return c.String(http.StatusOK, "pong")
 		})
-		api.GET("/ws", s.ConnectWS)
+		api.GET("/ws", func(c echo.Context) error {
+			s.ConnectWS(c, func(c *streamer.Client) {
+				game.ProcessDeadDisconnected(s, c.Id)
+				utils.Del(s.Clients, c.Id)
+			})
+			return nil
+		})
 	}
 
-	go s.Listen()
+	go game.GameLoop(s)
+	go s.Listen(game.HandlerWebSocket)
 
 	e.Logger.Panic(e.Start(":3939"))
 }

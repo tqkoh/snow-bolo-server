@@ -7,31 +7,30 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-type streamer struct {
-	clients  map[uuid.UUID]*client
-	receiver chan receiveData
+type Streamer struct {
+	Clients  map[uuid.UUID]*Client
+	receiver chan ReceiveData
 }
 
-func NewStreamer() *streamer {
-	return &streamer{
-		clients:  make(map[uuid.UUID]*client),
-		receiver: make(chan receiveData),
+func NewStreamer() *Streamer {
+	return &Streamer{
+		Clients:  make(map[uuid.UUID]*Client),
+		receiver: make(chan ReceiveData),
 	}
 }
 
-type payload struct {
+type Payload struct {
 	Method string                 `json:"method,omitempty"`
 	Args   map[string]interface{} `json:"args,omitempty"`
 }
 
-func (s *streamer) Listen() {
-	go gameLoop(s)
+func (s *Streamer) Listen(handlerWebSocket func(s *Streamer, data ReceiveData) error) {
 
 	for {
 		data := <-s.receiver
 
 		go func() {
-			err := s.handlerWebSocket(data)
+			err := handlerWebSocket(s, data)
 			if err != nil {
 				log.Print("error: ", err)
 			}
@@ -39,8 +38,8 @@ func (s *streamer) Listen() {
 	}
 }
 
-func (s *streamer) send(message []byte, cond func(c *client) bool) error {
-	for _, c := range s.clients {
+func (s *Streamer) Send(message []byte, cond func(c *Client) bool) error {
+	for _, c := range s.Clients {
 		if cond(c) {
 			c.sender <- message
 		}
@@ -48,8 +47,8 @@ func (s *streamer) send(message []byte, cond func(c *client) bool) error {
 	return nil
 }
 
-func (s *streamer) sendTo(id uuid.UUID, message []byte) error {
-	c, ok := s.clients[id]
+func (s *Streamer) SendTo(id uuid.UUID, message []byte) error {
+	c, ok := s.Clients[id]
 	if !ok {
 		return fmt.Errorf("client not found")
 	}

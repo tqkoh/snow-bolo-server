@@ -1,4 +1,4 @@
-package streamer
+package game
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/downflux/go-geometry/nd/vector"
 	"github.com/gofrs/uuid"
+	"github.com/tqkoh/snowball-server/streamer"
 )
 
 type Join struct {
@@ -22,7 +23,7 @@ type JoinAccepted struct {
 	Args   JoinArgs `json:"args"`
 }
 
-func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) error {
+func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	if _, ok := args["name"]; !ok {
 		return fmt.Errorf("name is required\n")
 	}
@@ -61,7 +62,7 @@ func processJoin(s *streamer, clientId uuid.UUID, args map[string]interface{}) e
 	if err != nil {
 		return err
 	}
-	s.sendTo(clientId, resJSON)
+	s.SendTo(clientId, resJSON)
 
 	return nil
 }
