@@ -91,11 +91,11 @@ func processCollide(s *streamer, t *user, u *user) {
 	u.Vx = v1uy*math.Sin(-theta) + v1ux*math.Cos(-theta)
 
 	// update position to avoid double collision
-	// var dd = radiusFromMass(m) + radiusFromMass(M) - dl + 1
-	// t.Y = t.Y + dd*(m/(m+M))*dy/dl
-	// t.X = t.X + dd*(m/(m+M))*dx/dl
-	// u.Y = u.Y + dd*(-M/(m+M))*dy/dl
-	// u.X = u.X + dd*(-M/(m+M))*dx/dl
+	var dd = radiusFromMass(m) + radiusFromMass(M) - dl + 1
+	t.Y = t.Y + dd*(m/(m+M))*dy/dl
+	t.X = t.X + dd*(m/(m+M))*dx/dl
+	u.Y = u.Y + dd*(-M/(m+M))*dy/dl
+	u.X = u.X + dd*(-M/(m+M))*dx/dl
 
 	// update hitstop and inoperable frames
 	var imt = math.Abs(m*v0ty - m*v1ty)
@@ -250,10 +250,13 @@ func gameLoop(s *streamer) {
 
 				// update leftClickLength
 				if input.Left {
-					if u.LeftClickLength < 150 {
+					if u.LeftClickCancelled {
+						u.LeftClickLength = 0
+					} else if u.LeftClickLength < 150 {
 						u.LeftClickLength++
 					}
 				} else {
+					u.LeftClickCancelled = false
 					if u.LeftClickLength > 0 {
 						var id = uuid.Must(uuid.NewV4())
 						var l = math.Sqrt(float64(u.Dy*u.Dy + u.Dx*u.Dx))
@@ -287,6 +290,7 @@ func gameLoop(s *streamer) {
 
 				// update rightClickLength
 				if input.Right {
+					u.LeftClickCancelled = true
 					u.RightClickLength++
 				} else {
 					u.RightClickLength = 0
@@ -355,20 +359,20 @@ func gameLoop(s *streamer) {
 			f.X += f.Vx
 
 			radius := radiusFromMass(f.Mass)
-			if f.Y < MAP_MARGIN-radius {
-				f.Y = MAP_MARGIN - radius
+			if f.Y < MAP_MARGIN+radius {
+				f.Y = MAP_MARGIN + radius
 				f.Vy = 0
 			}
-			if f.Y >= MAP_HEIGHT-MAP_MARGIN+radius {
-				f.Y = MAP_HEIGHT - MAP_MARGIN + radius
+			if f.Y >= MAP_HEIGHT-MAP_MARGIN-radius {
+				f.Y = MAP_HEIGHT - MAP_MARGIN - radius
 				f.Vy = 0
 			}
-			if f.X < MAP_MARGIN-radius {
-				f.X = MAP_MARGIN - radius
+			if f.X < MAP_MARGIN+radius {
+				f.X = MAP_MARGIN + radius
 				f.Vx = 0
 			}
-			if f.X >= MAP_HEIGHT-MAP_MARGIN+radius {
-				f.X = MAP_HEIGHT - MAP_MARGIN + radius
+			if f.X >= MAP_HEIGHT-MAP_MARGIN-radius {
+				f.X = MAP_HEIGHT - MAP_MARGIN - radius
 				f.Vx = 0
 			}
 
@@ -461,22 +465,23 @@ func gameLoop(s *streamer) {
 			var u []userReduced = make([]userReduced, 0)
 			for _, user := range users {
 				u = append(u, userReduced{
-					Id:               user.Id,
-					Dummy:            user.Dummy,
-					Name:             user.Name,
-					Mass:             user.Mass,
-					Strength:         int(math.Min(user.Strength+1, 100)),
-					Damage:           user.Damage,
-					Y:                user.Y,
-					X:                user.X,
-					Vy:               user.Vy,
-					Vx:               user.Vx,
-					Dy:               user.Dy,
-					Dx:               user.Dx,
-					HitStop:          user.HitStop,
-					InOperable:       user.InOperable,
-					LeftClickLength:  user.LeftClickLength,
-					RightClickLength: user.RightClickLength,
+					Id:                 user.Id,
+					Dummy:              user.Dummy,
+					Name:               user.Name,
+					Mass:               user.Mass,
+					Strength:           int(math.Min(user.Strength+1, 100)),
+					Damage:             user.Damage,
+					Y:                  user.Y,
+					X:                  user.X,
+					Vy:                 user.Vy,
+					Vx:                 user.Vx,
+					Dy:                 user.Dy,
+					Dx:                 user.Dx,
+					HitStop:            user.HitStop,
+					InOperable:         user.InOperable,
+					LeftClickLength:    user.LeftClickLength,
+					RightClickLength:   user.RightClickLength,
+					LeftClickCancelled: user.LeftClickCancelled,
 				})
 
 				user.Damage = 0
