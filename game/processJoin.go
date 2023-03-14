@@ -32,6 +32,18 @@ func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]inter
 		return fmt.Errorf("invalid type for name\n")
 	}
 
+	var m = BroadcastMessage{
+		Method: "message",
+		Args: MessageArgs{
+			Message: fmt.Sprintf("%s joined", name),
+		},
+	}
+	resJSON, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	s.Send(resJSON, func(_ *streamer.Client) bool { return true })
+
 	var y = float64(rand.Intn(MAP_HEIGHT-MAP_MARGIN*2) + MAP_MARGIN)
 	var x = float64(rand.Intn(MAP_WIDTH-MAP_MARGIN*2) + MAP_MARGIN)
 
@@ -58,7 +70,7 @@ func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]inter
 			Id: clientId,
 		},
 	}
-	resJSON, err := json.Marshal(res)
+	resJSON, err = json.Marshal(res)
 	if err != nil {
 		return err
 	}

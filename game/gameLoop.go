@@ -345,6 +345,9 @@ func GameLoop(s *streamer.Streamer) {
 				b.X = MAP_HEIGHT - MAP_MARGIN - radius
 				b.Vx = 0
 			}
+
+			b.Mass += math.Sqrt(b.Vy*b.Vy+b.Vx*b.Vx) * math.Sqrt(b.Mass) * MASS_K
+
 			kdEntities.Insert(&P{
 				p:   vector.V{b.Y, b.X},
 				tag: b.Id.String() + "B",
@@ -376,6 +379,8 @@ func GameLoop(s *streamer.Streamer) {
 				f.X = MAP_HEIGHT - MAP_MARGIN - radius
 				f.Vx = 0
 			}
+
+			f.Mass += math.Sqrt(f.Vy*f.Vy+f.Vx*f.Vx) * math.Sqrt(f.Mass) * MASS_K
 
 			kdEntities.Insert(&P{
 				p:   vector.V{f.Y, f.X},
