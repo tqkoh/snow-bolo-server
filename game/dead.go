@@ -12,14 +12,6 @@ import (
 	"github.com/tqkoh/snow-bolo-server/utils"
 )
 
-type deadArgs struct {
-	Kills int `json:"kills"`
-}
-type dead struct {
-	Method string   `json:"method"`
-	Args   deadArgs `json:"args"`
-}
-
 func ProcessDeadDisconnected(s *streamer.Streamer, uId uuid.UUID) {
 	name := "unknown"
 	if u, ok := users[uId]; ok {
@@ -47,30 +39,32 @@ func processDead(s *streamer.Streamer, uId uuid.UUID, by uuid.UUID, log string, 
 		enemy.Kills += 1
 	}
 
-	var m = BroadcastMessage{
+	var p = streamer.Payload{
 		Method: "message",
-		Args: MessageArgs{
-			Message: log,
+		Args: map[string]interface{}{
+			"message": log,
 		},
 	}
-	resJSON, err := json.Marshal(m)
+	println("chat: ", log)
+
+	resJSON, err := json.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	s.Send(resJSON, func(_ *streamer.Client) bool { return true })
 
 	if !disconnected {
-		var m2 = dead{
+		p = streamer.Payload{
 			Method: "dead",
-			Args: deadArgs{
-				Kills: u.Kills,
+			Args: map[string]interface{}{
+				"kills": u.Kills,
 			},
 		}
-		resJSON2, err := json.Marshal(m2)
+		resJSON, err = json.Marshal(p)
 		if err != nil {
 			panic(err)
 		}
-		if err = s.SendTo(uId, resJSON2); err != nil {
+		if err = s.SendTo(uId, resJSON); err != nil {
 			fmt.Println("sendTo error: ", err)
 		}
 	}

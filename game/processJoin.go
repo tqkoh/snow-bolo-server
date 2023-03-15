@@ -14,32 +14,25 @@ type Join struct {
 	Name string `json:"name"`
 }
 
-type JoinArgs struct {
-	Id uuid.UUID `json:"id"`
-}
-
-type JoinAccepted struct {
-	Method string   `json:"method"`
-	Args   JoinArgs `json:"args"`
-}
-
 func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	if _, ok := args["name"]; !ok {
-		return fmt.Errorf("name is required\n")
+		return fmt.Errorf("name is required")
 	}
 	name, ok := args["name"].(string)
 	if !ok {
-		return fmt.Errorf("invalid type for name\n")
+		return fmt.Errorf("invalid type for name")
 	}
 
-	var m = BroadcastMessage{
+	var message = fmt.Sprintf("%s joined", name)
+	var p = streamer.Payload{
 		Method: "message",
-		Args: MessageArgs{
-			Message: fmt.Sprintf("%s joined", name),
+		Args: map[string]interface{}{
+			"message": message,
 		},
 	}
-	println(m.Args.Message)
-	resJSON, err := json.Marshal(m)
+	println("chat: ", message)
+
+	resJSON, err := json.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
@@ -65,10 +58,10 @@ func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]inter
 		tag: clientId.String() + "U",
 	})
 
-	var res JoinAccepted = JoinAccepted{
+	var res = streamer.Payload{
 		Method: "joinAccepted",
-		Args: JoinArgs{
-			Id: clientId,
+		Args: map[string]interface{}{
+			"id": clientId,
 		},
 	}
 	resJSON, err = json.Marshal(res)

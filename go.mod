@@ -10,7 +10,6 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/labstack/gommon v0.4.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/tqkoh/snowball-server v0.0.0-20230313095736-a2f26adfc9f0
 )
 
 require (

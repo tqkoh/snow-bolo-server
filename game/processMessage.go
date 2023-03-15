@@ -8,27 +8,19 @@ import (
 	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
-type MessageArgs struct {
-	Message string `json:"message"`
-}
-
-type BroadcastMessage struct {
-	Method string      `json:"method"`
-	Args   MessageArgs `json:"args"`
-}
-
 func processMessage(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
-	sendMessage, ok := args["message"].(string)
+	message, ok := args["message"].(string)
 	if !ok {
-		return fmt.Errorf("invalid type for message\n")
+		return fmt.Errorf("invalid type for message")
 	}
 
-	var res = BroadcastMessage{
+	var res = streamer.Payload{
 		Method: "message",
-		Args: MessageArgs{
-			Message: sendMessage,
+		Args: map[string]interface{}{
+			"message": message,
 		},
 	}
+	println("chat: ", message)
 
 	resJSON, err := json.Marshal(res)
 	if err != nil {
