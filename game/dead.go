@@ -8,8 +8,8 @@ import (
 
 	"github.com/downflux/go-geometry/nd/vector"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer"
-	"github.com/tqkoh/snowball-server/utils"
+	"github.com/tqkoh/snow-bolo-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/utils"
 )
 
 type deadArgs struct {

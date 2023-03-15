@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
 func HandlerWebSocket(s *streamer.Streamer, data streamer.ReceiveData) error {

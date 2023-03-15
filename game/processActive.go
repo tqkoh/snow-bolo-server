@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
 func processActive(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {

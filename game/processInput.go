@@ -3,7 +3,7 @@ package game
 import (
 	"github.com/gofrs/uuid"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
 type Input struct {

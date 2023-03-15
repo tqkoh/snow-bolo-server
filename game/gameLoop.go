@@ -12,8 +12,8 @@ import (
 	"github.com/downflux/go-kd/kd"
 	"github.com/downflux/go-kd/point"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer"
-	"github.com/tqkoh/snowball-server/utils"
+	"github.com/tqkoh/snow-bolo-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/utils"
 )
 
 type updateArgs struct {
@@ -267,7 +267,7 @@ func GameLoop(s *streamer.Streamer) {
 						var t = (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy)) / (l * l)
 						var Hx = float64(u.Dx) * t
 						var Hy = float64(u.Dy) * t
-						var mass = u.Mass * float64(u.LeftClickLength) / 150 * MAX_BULLET_MASS
+						var mass = u.Mass * float64(u.LeftClickLength) / 150 * MAX_BULLET_RATIO
 
 						var radiusAfter = radiusFromMass(u.Mass - mass)
 						bullets[id] = &bullet{

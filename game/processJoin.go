@@ -7,7 +7,7 @@ import (
 
 	"github.com/downflux/go-geometry/nd/vector"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
 type Join struct {
@@ -38,6 +38,7 @@ func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]inter
 			Message: fmt.Sprintf("%s joined", name),
 		},
 	}
+	println(m.Args.Message)
 	resJSON, err := json.Marshal(m)
 	if err != nil {
 		panic(err)
