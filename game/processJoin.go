@@ -7,30 +7,36 @@ import (
 
 	"github.com/downflux/go-geometry/nd/vector"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
 type Join struct {
 	Name string `json:"name"`
 }
 
-type JoinArgs struct {
-	Id uuid.UUID `json:"id"`
-}
-
-type JoinAccepted struct {
-	Method string   `json:"method"`
-	Args   JoinArgs `json:"args"`
-}
-
 func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	if _, ok := args["name"]; !ok {
-		return fmt.Errorf("name is required\n")
+		return fmt.Errorf("name is required")
 	}
 	name, ok := args["name"].(string)
 	if !ok {
-		return fmt.Errorf("invalid type for name\n")
+		return fmt.Errorf("invalid type for name")
 	}
+
+	var message = fmt.Sprintf("%s joined", name)
+	var p = streamer.Payload{
+		Method: "message",
+		Args: map[string]interface{}{
+			"message": message,
+		},
+	}
+	println("chat: ", message)
+
+	resJSON, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	s.Send(resJSON, func(_ *streamer.Client) bool { return true })
 
 	var y = float64(rand.Intn(MAP_HEIGHT-MAP_MARGIN*2) + MAP_MARGIN)
 	var x = float64(rand.Intn(MAP_WIDTH-MAP_MARGIN*2) + MAP_MARGIN)
@@ -52,13 +58,13 @@ func processJoin(s *streamer.Streamer, clientId uuid.UUID, args map[string]inter
 		tag: clientId.String() + "U",
 	})
 
-	var res JoinAccepted = JoinAccepted{
+	var res = streamer.Payload{
 		Method: "joinAccepted",
-		Args: JoinArgs{
-			Id: clientId,
+		Args: map[string]interface{}{
+			"id": clientId,
 		},
 	}
-	resJSON, err := json.Marshal(res)
+	resJSON, err = json.Marshal(res)
 	if err != nil {
 		return err
 	}

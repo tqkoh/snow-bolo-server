@@ -6,9 +6,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-	"github.com/tqkoh/snowball-server/game"
-	"github.com/tqkoh/snowball-server/streamer"
-	"github.com/tqkoh/snowball-server/utils"
+	"github.com/tqkoh/snow-bolo-server/game"
+	"github.com/tqkoh/snow-bolo-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/utils"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{Format: "${time_rfc3339} method = ${method} | uri = ${uri} | code = ${status} ${error}\n"}))
 
 	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "front: https://tqk.blue/snowball/")
+		return c.String(http.StatusOK, "front: https://tqk.blue/snow-bolo/")
 	})
 
 	api := e.Group("/api")

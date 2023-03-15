@@ -3,7 +3,7 @@ package game
 import (
 	"github.com/gofrs/uuid"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
 type Input struct {
@@ -13,8 +13,8 @@ type Input struct {
 	D     bool `json:"d"`
 	Left  bool `json:"left"`
 	Right bool `json:"right"`
-	Dx    int  `json:"dx"`
 	Dy    int  `json:"dy"`
+	Dx    int  `json:"dx"`
 }
 
 func processInput(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {

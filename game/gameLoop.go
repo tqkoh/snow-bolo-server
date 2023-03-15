@@ -12,19 +12,9 @@ import (
 	"github.com/downflux/go-kd/kd"
 	"github.com/downflux/go-kd/point"
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer"
-	"github.com/tqkoh/snowball-server/utils"
+	"github.com/tqkoh/snow-bolo-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/utils"
 )
-
-type updateArgs struct {
-	Users   []userReduced `json:"users"`
-	Bullets []bullet      `json:"bullets"`
-	Feeds   []feed        `json:"feeds"`
-}
-type update struct {
-	Method string     `json:"method"`
-	Args   updateArgs `json:"args"`
-}
 
 // kd
 var _ point.P = &P{}
@@ -267,7 +257,7 @@ func GameLoop(s *streamer.Streamer) {
 						var t = (u.Vx*float64(u.Dx) + u.Vy*float64(u.Dy)) / (l * l)
 						var Hx = float64(u.Dx) * t
 						var Hy = float64(u.Dy) * t
-						var mass = u.Mass * float64(u.LeftClickLength) / 150 * MAX_BULLET_MASS
+						var mass = u.Mass * float64(u.LeftClickLength) / 150 * MAX_BULLET_RATIO
 
 						var radiusAfter = radiusFromMass(u.Mass - mass)
 						bullets[id] = &bullet{
@@ -345,6 +335,9 @@ func GameLoop(s *streamer.Streamer) {
 				b.X = MAP_HEIGHT - MAP_MARGIN - radius
 				b.Vx = 0
 			}
+
+			b.Mass += math.Sqrt(b.Vy*b.Vy+b.Vx*b.Vx) * math.Sqrt(b.Mass) * MASS_K
+
 			kdEntities.Insert(&P{
 				p:   vector.V{b.Y, b.X},
 				tag: b.Id.String() + "B",
@@ -376,6 +369,8 @@ func GameLoop(s *streamer.Streamer) {
 				f.X = MAP_HEIGHT - MAP_MARGIN - radius
 				f.Vx = 0
 			}
+
+			f.Mass += math.Sqrt(f.Vy*f.Vy+f.Vx*f.Vx) * math.Sqrt(f.Mass) * MASS_K
 
 			kdEntities.Insert(&P{
 				p:   vector.V{f.Y, f.X},
@@ -466,23 +461,22 @@ func GameLoop(s *streamer.Streamer) {
 			var u []userReduced = make([]userReduced, 0)
 			for _, user := range users {
 				u = append(u, userReduced{
-					Id:                 user.Id,
-					Dummy:              user.Dummy,
-					Name:               user.Name,
-					Mass:               user.Mass,
-					Strength:           int(math.Min(user.Strength+1, 100)),
-					Damage:             user.Damage,
-					Y:                  user.Y,
-					X:                  user.X,
-					Vy:                 user.Vy,
-					Vx:                 user.Vx,
-					Dy:                 user.Dy,
-					Dx:                 user.Dx,
-					HitStop:            user.HitStop,
-					InOperable:         user.InOperable,
-					LeftClickLength:    user.LeftClickLength,
-					RightClickLength:   user.RightClickLength,
-					LeftClickCancelled: user.LeftClickCancelled,
+					Id:               user.Id,
+					Dummy:            user.Dummy,
+					Name:             user.Name,
+					Mass:             user.Mass,
+					Strength:         int(math.Min(user.Strength+1, 100)),
+					Damage:           user.Damage,
+					Y:                user.Y,
+					X:                user.X,
+					Vy:               user.Vy,
+					Vx:               user.Vx,
+					Dy:               user.Dy,
+					Dx:               user.Dx,
+					HitStop:          user.HitStop,
+					InOperable:       user.InOperable,
+					LeftClickLength:  user.LeftClickLength,
+					RightClickLength: user.RightClickLength,
 				})
 
 				user.Damage = 0
@@ -500,18 +494,13 @@ func GameLoop(s *streamer.Streamer) {
 			for _, feed := range feeds {
 				f = append(f, *feed)
 			}
-			var args = updateArgs{
-				Users:   u,
-				Bullets: b,
-				Feeds:   f,
-			}
-			var update = update{
+
+			update := streamer.Payload{
 				Method: "update",
-				Args:   args,
+				Args:   map[string]interface{}{"users": u, "bullets": b, "feeds": f},
 			}
 			var updateJSON, err = json.Marshal(update)
 			if err != nil {
-				fmt.Printf("args: %v", args)
 				fmt.Printf("json.Marshal error: %v", err)
 			}
 			s.Send(updateJSON, func(c *streamer.Client) bool { return c.Active })

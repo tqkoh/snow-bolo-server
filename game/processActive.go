@@ -4,13 +4,13 @@ import (
 	"fmt"
 
 	"github.com/gofrs/uuid"
-	"github.com/tqkoh/snowball-server/streamer"
+	"github.com/tqkoh/snow-bolo-server/streamer"
 )
 
 func processActive(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
 	active, ok := args["active"].(bool)
 	if !ok {
-		return fmt.Errorf("invalid type for active\n")
+		return fmt.Errorf("invalid type for active")
 	}
 
 	c, ok := s.Clients[clientId]

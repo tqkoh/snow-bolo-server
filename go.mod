@@ -1,4 +1,4 @@
-module github.com/tqkoh/snowball-server
+module github.com/tqkoh/snow-bolo-server
 
 go 1.18
 
