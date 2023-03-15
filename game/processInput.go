@@ -13,8 +13,8 @@ type Input struct {
 	D     bool `json:"d"`
 	Left  bool `json:"left"`
 	Right bool `json:"right"`
-	Dx    int  `json:"dx"`
 	Dy    int  `json:"dy"`
+	Dx    int  `json:"dx"`
 }
 
 func processInput(s *streamer.Streamer, clientId uuid.UUID, args map[string]interface{}) error {
